@@ -1,0 +1,3 @@
+#pragma once
+#define COLLISION_CHANNEL_MONSTER ECollisionChannel::ECC_EngineTraceChannel1
+#define COLLISION_CHANNEL_BULLET ECollisionChannel::ECC_EngineTraceChannel2
