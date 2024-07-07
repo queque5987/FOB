@@ -1,25 +1,27 @@
 #pragma once
 
 #include "CoreMinimal.h"
-//#include "GameFramework/Character.h"
-#include "GameFramework/Pawn.h"
+#include "GameFramework/Character.h"
+//#include "GameFramework/Pawn.h"
 #include "MonsterCharacter.h"
 #include "CMonsterCharacter.generated.h"
 
 UCLASS()
-class FOB_API ACMonsterCharacter : public APawn, public IMonsterCharacter
+class FOB_API ACMonsterCharacter : public ACharacter, public IMonsterCharacter
 {
 	GENERATED_BODY()
 
 public:
-	ACMonsterCharacter();
+	ACMonsterCharacter(const FObjectInitializer& ObjectInitializer);
 
 protected:
 	virtual void BeginPlay() override;
-	UPROPERTY(EditAnywhere)
-	class USkeletalMeshComponent* SkeletalMeshComponent;
+	//UPROPERTY(EditAnywhere)
+	//class USkeletalMeshComponent* SkeletalMeshComponent;
 	UPROPERTY(EditAnywhere)
 	class UTextRenderComponent* TextRenderComponent;
+	//UPROPERTY()
+	//class UMonsterMovementComponent* MonsterMovementComponent;
 
 	UPROPERTY(replicated)
 	float fHP;

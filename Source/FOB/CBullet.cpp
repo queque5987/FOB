@@ -69,7 +69,7 @@ void ACBullet::CheckOverlapingActor()
 			{
 				FDamageEvent DamageEvent = FDamageEvent();
 
-				UGameplayStatics::ApplyPointDamage(Monster, 1.f, Monster->GetActorLocation()-GetActorLocation(), HR, GetInstigatorController(), this, DamageType)
+				//UGameplayStatics::ApplyPointDamage(Monster, 1.f, Monster->GetActorLocation()-GetActorLocation(), HR, GetInstigatorController(), this, DamageType)
 
 				ACharacter* OwningPlayer = Cast<ACharacter>(GetOwner());
 				if (OwningPlayer != nullptr)

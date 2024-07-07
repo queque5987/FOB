@@ -5,34 +5,50 @@
 #include "UIController.h"
 #include "CGameState.h"
 #include "Net/UnrealNetwork.h"
+#include "CMonsterAnimBP.h"
+#include "CMonsterAIController.h"
+#include "Components/ShapeComponent.h"
+#include "MonsterMovementComponent.h"
 
-ACMonsterCharacter::ACMonsterCharacter()
+ACMonsterCharacter::ACMonsterCharacter(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer.SetDefaultSubobjectClass<UMonsterMovementComponent>(ACharacter::CharacterMovementComponentName))
 {
 	PrimaryActorTick.bCanEverTick = true;
 	bReplicates = true;
 
-	SkeletalMeshComponent = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("SKeletalMeshComponent"));
+	//SkeletalMeshComponent = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("SkeletalMeshComponent"));
 	TextRenderComponent = CreateDefaultSubobject<UTextRenderComponent>(TEXT("TextRenderComponent"));
+	//MonsterMovementComponent = CreateDefaultSubobject<UMonsterMovementComponent>("MonsterMovementComponent");
 
 	ConstructorHelpers::FObjectFinder<USkeletalMesh> SKFinder(TEXT("/Game/Resources/QuadrapedCreatures/MountainDragon/Meshes/SK_MOUNTAIN_DRAGON.SK_MOUNTAIN_DRAGON"));
 	if (SKFinder.Succeeded())
 	{
-		//GetMesh()->SetSkeletalMesh(SKFinder.Object);
-		SkeletalMeshComponent->SetSkeletalMesh(SKFinder.Object);
+		GetMesh()->SetSkeletalMesh(SKFinder.Object);
+		GetMesh()->SetRelativeLocation(FVector(0.f, 0.f, -90.f));
+		GetMesh()->SetRelativeRotation(FRotator(0.f, -90.f, 0.f));
 	}
-
-	SetRootComponent(SkeletalMeshComponent);
+	GetMesh()->SetupAttachment(RootComponent);
 
 	MaxHP = 100.f;
 	fHP = MaxHP;
 
-	TextRenderComponent->SetupAttachment(SkeletalMeshComponent);
+	TextRenderComponent->SetupAttachment(RootComponent);
 	TextRenderComponent->SetText(FText::FromString(FString::SanitizeFloat(fHP)));
 
-	SkeletalMeshComponent->SetCollisionObjectType(COLLISION_CHANNEL_MONSTER);
-	SkeletalMeshComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-	SkeletalMeshComponent->SetCollisionResponseToChannel(COLLISION_CHANNEL_BULLET, ECollisionResponse::ECR_Overlap);
+	GetMesh()->SetCollisionObjectType(COLLISION_CHANNEL_MONSTER);
+	GetMesh()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	GetMesh()->SetCollisionResponseToChannel(COLLISION_CHANNEL_BULLET, ECollisionResponse::ECR_Overlap);
 
+	ConstructorHelpers::FClassFinder<UAnimInstance> AnimBPFinder(TEXT("/Game/Resources/QuadrapedCreatures/MountainDragon/BP_MonsterAnimBP"));
+	if (AnimBPFinder.Succeeded())
+	{
+		GetMesh()->SetAnimInstanceClass(AnimBPFinder.Class);
+	}
+
+	AIControllerClass = ACMonsterAIController::StaticClass();
+
+	//UCharacterMovementComponent* MovementComponent = GetCharacterMovement();
+	//MovementComponent->bRequestedMoveUseAcceleration = true;
+	//MovementComponent->MaxAcceleration = 120.f;
 }
 
 void ACMonsterCharacter::BeginPlay()
