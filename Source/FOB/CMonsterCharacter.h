@@ -35,7 +35,15 @@ protected:
 	void DamageMonster(float DamageAmount);
 	void DamageMonster_Implementation(float DamageAmount);
 
+	// Can't be replicated
 	TMap<FString, class UAnimSequence*> HostileAnimMap;
+	TArray<FAssetData> AssetData;
+
+	UPROPERTY(replicated)
+	class UAnimSequence* BiteAnimSequence;
+
+	UFUNCTION(NetMulticast, Reliable)
+	void SetBindDelegates();
 public:	
 	virtual void Tick(float DeltaTime) override;
 
@@ -52,10 +60,9 @@ public:
 
 	FDoAttack DoAttack;
 
-	UFUNCTION(Server, Reliable)
+	UFUNCTION(Server, Reliable, WithValidation)
 	void ServerDoAttack(const FString& AttackType);
 
 	UFUNCTION(NetMulticast, Reliable)
-	void ClientDoAttack(const FString& AttackType);
-	//void ClientDoAttack_Implementation(const FString& AttackType);
+	void MulticastDoAttack(const FString& AttackType);
 };

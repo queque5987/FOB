@@ -47,19 +47,13 @@ ACMonsterCharacter::ACMonsterCharacter(const FObjectInitializer& ObjectInitializ
 
 	AIControllerClass = ACMonsterAIController::StaticClass();
 
-	FAssetRegistryModule& AssetRegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
-	TArray<FAssetData> AssetData;
-	FARFilter Filter;
-	Filter.PackagePaths.Add("/Game/Resources/QuadrapedCreatures/MountainDragon/Animations/Hostile");
-	AssetRegistryModule.Get().GetAssets(Filter, AssetData);
-	UAnimSequence* tempAnim;
-	for (FAssetData Dat : AssetData)
-	{
-		tempAnim = Cast<UAnimSequence>(Dat.GetAsset());
-		if (tempAnim == nullptr) continue;
-		HostileAnimMap.Add(Dat.AssetName.ToString(), tempAnim);
-		UE_LOG(LogTemp, Log, TEXT("Loading Asset : %s"), *Dat.AssetName.ToString());
-	}
+	ConstructorHelpers::FObjectFinder<UAnimSequence> BiteAnimFinder(TEXT("/Game/Resources/QuadrapedCreatures/MountainDragon/Animations/Hostile/ANIM_MOUNTAIN_DRAGON_bite"));
+	if (BiteAnimFinder.Succeeded()) BiteAnimSequence = BiteAnimFinder.Object;
+
+	//FAssetRegistryModule& AssetRegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
+	//FARFilter Filter;
+	//Filter.PackagePaths.Add("/Game/Resources/QuadrapedCreatures/MountainDragon/Animations/Hostile");
+	//AssetRegistryModule.Get().GetAssets(Filter, AssetData);
 }
 
 void ACMonsterCharacter::BeginPlay()
@@ -69,7 +63,20 @@ void ACMonsterCharacter::BeginPlay()
 	if (GameState == nullptr) return;
 	fHP = GameState->AddSpawnedMonsterHP(this, fHP);
 
-	DoAttack.BindUFunction(this, FName("ServerDoAttack"));
+	//UAnimSequence* tempAnim;
+	//for (FAssetData Dat : AssetData)
+	//{
+	//	tempAnim = Cast<UAnimSequence>(Dat.GetAsset());
+	//	if (tempAnim == nullptr) continue;
+	//	HostileAnimMap.Add(Dat.AssetName.ToString(), tempAnim);
+	//	UE_LOG(LogTemp, Log, TEXT("Loading Asset : %s"), *Dat.AssetName.ToString());
+	//}
+
+	SetBindDelegates();
+	//if (HasAuthority())
+	//{
+	//	DoAttack.BindUFunction(this, FName("ServerDoAttack"));
+	//}
 }
 
 void ACMonsterCharacter::UpdateMonsterHP_Implementation()
@@ -84,6 +91,11 @@ void ACMonsterCharacter::DamageMonster_Implementation(float DamageAmount)
 	ACGameState* GameState = Cast<ACGameState>(GetWorld()->GetGameState());
 	if (GameState == nullptr) return;
 	GameState->TakeDamageSpawnedMonster(this, DamageAmount);
+}
+
+void ACMonsterCharacter::SetBindDelegates_Implementation()
+{
+	DoAttack.BindUFunction(this, FName("ServerDoAttack"));
 }
 
 void ACMonsterCharacter::Tick(float DeltaTime)
@@ -117,29 +129,47 @@ void ACMonsterCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& O
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(ACMonsterCharacter, fHP);
+	DOREPLIFETIME(ACMonsterCharacter, BiteAnimSequence);
 }
 
 void ACMonsterCharacter::SetHP_Implementation(float NewHP)
 {
-	//UE_LOG(LogTemp, Log, TEXT("Curr HP : %f >> New HP : %f"), fHP, NewHP);
 	fHP = NewHP;
+}
+
+
+bool ACMonsterCharacter::ServerDoAttack_Validate(const FString& AttackType)
+{
+	return true;
 }
 
 void ACMonsterCharacter::ServerDoAttack_Implementation(const FString& AttackType)
 {
-	ClientDoAttack(AttackType);
+	MulticastDoAttack(AttackType);
 }
 
-void ACMonsterCharacter::ClientDoAttack_Implementation(const FString& AttackType)
+void ACMonsterCharacter::MulticastDoAttack_Implementation(const FString& AttackType)
 {
-	UAnimSequence* tempAnimsequence = *HostileAnimMap.Find(AttackType);
-	if (tempAnimsequence == nullptr)
+	UE_LOG(LogTemp, Log, TEXT("ClientDoAttack_Implementation : Playing %s"), *AttackType);
+
+	//UAnimSequence** tempAnimsequence = HostileAnimMap.Find(AttackType);
+	//if (tempAnimsequence == nullptr)
+	//{
+	//	TArray<FString> Keys;
+	//	HostileAnimMap.GetKeys(Keys);
+	//	for (FString Key : Keys)
+	//	{
+	//		UE_LOG(LogTemp, Log, TEXT("\t Hostile Anim Key : %s"), *Key);
+	//	}
+	//	UE_LOG(LogTemp, Log, TEXT("ClientDoAttack_Implementation : %s Can Not Be Found"), *AttackType);
+	//	return;
+	//}
+	//GetMesh()->GetAnimInstance()->PlaySlotAnimationAsDynamicMontage(*tempAnimsequence, "DefaultSlot");
+	if (BiteAnimSequence == nullptr)
 	{
 		UE_LOG(LogTemp, Log, TEXT("ClientDoAttack_Implementation : %s Can Not Be Found"), *AttackType);
 		return;
 	}
-	UE_LOG(LogTemp, Log, TEXT("ClientDoAttack_Implementation : Playing %s"), *AttackType);
-
-	GetMesh()->GetAnimInstance()->PlaySlotAnimationAsDynamicMontage(tempAnimsequence, "DefaultSlot");
+	GetMesh()->GetAnimInstance()->PlaySlotAnimationAsDynamicMontage(BiteAnimSequence, "DefaultSlot");
 }
 
