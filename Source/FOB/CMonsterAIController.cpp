@@ -32,3 +32,4 @@ void ACMonsterAIController::OnPossess(APawn* InPawn)
 
 	Blackboard->SetValueAsVector(HomePosKey, InPawn->GetActorLocation());
 }
+

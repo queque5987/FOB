@@ -6,9 +6,7 @@
 #include "AIController.h"
 #include "CMonsterAIController.generated.h"
 
-/**
- * 
- */
+
 UCLASS()
 class FOB_API ACMonsterAIController : public AAIController
 {
@@ -24,4 +22,5 @@ class FOB_API ACMonsterAIController : public AAIController
 public:
 	static const FName HomePosKey;
 	static const FName PatrolPosKey;
+
 };

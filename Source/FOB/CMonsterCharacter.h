@@ -2,9 +2,10 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
-//#include "GameFramework/Pawn.h"
 #include "MonsterCharacter.h"
 #include "CMonsterCharacter.generated.h"
+
+DECLARE_DELEGATE_OneParam(FDoAttack, const FString&);
 
 UCLASS()
 class FOB_API ACMonsterCharacter : public ACharacter, public IMonsterCharacter
@@ -34,6 +35,7 @@ protected:
 	void DamageMonster(float DamageAmount);
 	void DamageMonster_Implementation(float DamageAmount);
 
+	TMap<FString, class UAnimSequence*> HostileAnimMap;
 public:	
 	virtual void Tick(float DeltaTime) override;
 
@@ -47,4 +49,13 @@ public:
 
 	virtual float GetHP() override { return fHP; };
 	virtual float GetMaxHP() override { return MaxHP; }
+
+	FDoAttack DoAttack;
+
+	UFUNCTION(Server, Reliable)
+	void ServerDoAttack(const FString& AttackType);
+
+	UFUNCTION(NetMulticast, Reliable)
+	void ClientDoAttack(const FString& AttackType);
+	//void ClientDoAttack_Implementation(const FString& AttackType);
 };

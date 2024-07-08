@@ -31,10 +31,10 @@ float ACGameState::AddSpawnedMonsterHP(APawn* SpawnedMonster, float MaxHP)
 {
 	if (SpawnedMonsterStateMap.Contains(SpawnedMonster))
 	{
-		UE_LOG(LogTemp, Log, TEXT("AddSpawnedMonsterHP - Contains - %s"), *SpawnedMonster->GetName());
+		//UE_LOG(LogTemp, Log, TEXT("AddSpawnedMonsterHP - Contains - %s"), *SpawnedMonster->GetName());
 		return GetSpawnedMonsterHP(SpawnedMonster);
 	}
-	UE_LOG(LogTemp, Log, TEXT("CreateHUD_Implementation - Add To Map - %s"), *SpawnedMonster->GetName());
+	//UE_LOG(LogTemp, Log, TEXT("CreateHUD_Implementation - Add To Map - %s"), *SpawnedMonster->GetName());
 	return SpawnedMonsterStateMap.Add(SpawnedMonster, MaxHP);
 }
 
@@ -46,7 +46,7 @@ float ACGameState::TakeDamageSpawnedMonster(APawn* SpawnedMonster, float DamageA
 
 float ACGameState::GetSpawnedMonsterHP(APawn* SpawnedMonster)
 {
-	UE_LOG(LogTemp, Log, TEXT("GetSpawnedMonsterHP - Returning Value%f"), *SpawnedMonsterStateMap.Find(SpawnedMonster));
+	//UE_LOG(LogTemp, Log, TEXT("GetSpawnedMonsterHP - Returning Value%f"), *SpawnedMonsterStateMap.Find(SpawnedMonster));
 
 	return *SpawnedMonsterStateMap.Find(SpawnedMonster);
 }

@@ -19,7 +19,6 @@ class FOB_API UCMonsterAnimBP : public UAnimInstance
 	class APawn* Pawn;
 
 	virtual void NativeInitializeAnimation() override;
-
 public:
 
 	UFUNCTION(BlueprintCallable)
@@ -29,4 +28,13 @@ public:
 	float PawnVelocity;
 	UPROPERTY(BlueprintReadOnly)
 	float PawnMaxVelocity;
+
+private:
+	//UFUNCTION()
+	//void DoAttack(const FString AttackType);
+
+	//UFUNCTION(Client, unreliable)
+	//void ClientDoAttack(UAnimSequence* ToPlayAnimSequence);
+	//void ClientDoAttack_Implementation(UAnimSequence* ToPlayAnimSequence);
+
 };
