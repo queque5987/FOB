@@ -21,4 +21,5 @@ public:
 
 	virtual float GetHP() { return 0.f; }
 	virtual float GetMaxHP() { return 0.f; }
+	virtual FVector GetBoneLocation(FName BoneName) { return FVector(); }
 };

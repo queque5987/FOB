@@ -19,8 +19,17 @@ class FOB_API ACMonsterAIController : public AAIController
 
 	virtual void OnPossess(APawn* InPawn) override;
 
+	void SetPerceptionSystem();
+
+	class UAISenseConfig_Sight* SightConfig;
+
+	UFUNCTION()
+	void OnTargetDetected(AActor* actor, FAIStimulus const Stimulus);
 public:
 	static const FName HomePosKey;
 	static const FName PatrolPosKey;
+	static const FName PlayerPosKey;
+	static const FName bSeePlayerKey;
+	static const FName bHostileKey;
 
 };

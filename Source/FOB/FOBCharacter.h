@@ -48,6 +48,7 @@ public:
 	void LMBTriggered();
 	virtual void LMBTriggered_Implementation();
 
+	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser) override;
 protected:
 
 	void Move(const FInputActionValue& Value);
@@ -57,13 +58,20 @@ protected:
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	virtual void BeginPlay();
 	virtual void Tick(float DeltaSeconds) override;
-
+	virtual void PossessedBy(AController* NewController) override;
 public:
 	FORCEINLINE class USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
 	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
 
 private:
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
 	class UTextRenderComponent* TextRenderComponent;
+	UPROPERTY(Replicated)
 	float fHP;
+
+
+	UFUNCTION(Server, Reliable)
+	void UpdateHP();
 };
 

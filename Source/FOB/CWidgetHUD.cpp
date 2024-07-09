@@ -2,6 +2,7 @@
 
 
 #include "CWidgetHUD.h"
+#include "CPlayerState.h"
 
 void UCWidgetHUD::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 {
@@ -18,6 +19,11 @@ void UCWidgetHUD::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 	{
 		MonsterHPBar->SetVisibility(ESlateVisibility::Hidden);
 	}
+
+	ACPlayerState* C_PlayerState = GetOwningPlayerState<ACPlayerState>();
+	if (C_PlayerState == nullptr) return;
+
+	HPBar->SetPercent(C_PlayerState->GetHP() / C_PlayerState->GetMaxHP());
 }
 
 void UCWidgetHUD::SetDealingMonsterCharacter_Implementation(ACMonsterCharacter* DealingMonsterCharacter)

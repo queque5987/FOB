@@ -16,9 +16,7 @@ ACMonsterCharacter::ACMonsterCharacter(const FObjectInitializer& ObjectInitializ
 	PrimaryActorTick.bCanEverTick = true;
 	bReplicates = true;
 
-	//SkeletalMeshComponent = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("SkeletalMeshComponent"));
 	TextRenderComponent = CreateDefaultSubobject<UTextRenderComponent>(TEXT("TextRenderComponent"));
-	//MonsterMovementComponent = CreateDefaultSubobject<UMonsterMovementComponent>("MonsterMovementComponent");
 
 	ConstructorHelpers::FObjectFinder<USkeletalMesh> SKFinder(TEXT("/Game/Resources/QuadrapedCreatures/MountainDragon/Meshes/SK_MOUNTAIN_DRAGON.SK_MOUNTAIN_DRAGON"));
 	if (SKFinder.Succeeded())
@@ -37,7 +35,7 @@ ACMonsterCharacter::ACMonsterCharacter(const FObjectInitializer& ObjectInitializ
 
 	GetMesh()->SetCollisionObjectType(COLLISION_CHANNEL_MONSTER);
 	GetMesh()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-	GetMesh()->SetCollisionResponseToChannel(COLLISION_CHANNEL_BULLET, ECollisionResponse::ECR_Overlap);
+	//GetMesh()->SetCollisionResponseToChannel(COLLISION_CHANNEL_BULLET, ECollisionResponse::ECR_Overlap);
 
 	ConstructorHelpers::FClassFinder<UAnimInstance> AnimBPFinder(TEXT("/Game/Resources/QuadrapedCreatures/MountainDragon/BP_MonsterAnimBP"));
 	if (AnimBPFinder.Succeeded())
@@ -50,10 +48,7 @@ ACMonsterCharacter::ACMonsterCharacter(const FObjectInitializer& ObjectInitializ
 	ConstructorHelpers::FObjectFinder<UAnimSequence> BiteAnimFinder(TEXT("/Game/Resources/QuadrapedCreatures/MountainDragon/Animations/Hostile/ANIM_MOUNTAIN_DRAGON_bite"));
 	if (BiteAnimFinder.Succeeded()) BiteAnimSequence = BiteAnimFinder.Object;
 
-	//FAssetRegistryModule& AssetRegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
-	//FARFilter Filter;
-	//Filter.PackagePaths.Add("/Game/Resources/QuadrapedCreatures/MountainDragon/Animations/Hostile");
-	//AssetRegistryModule.Get().GetAssets(Filter, AssetData);
+	GetMesh()->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones;
 }
 
 void ACMonsterCharacter::BeginPlay()
@@ -63,20 +58,7 @@ void ACMonsterCharacter::BeginPlay()
 	if (GameState == nullptr) return;
 	fHP = GameState->AddSpawnedMonsterHP(this, fHP);
 
-	//UAnimSequence* tempAnim;
-	//for (FAssetData Dat : AssetData)
-	//{
-	//	tempAnim = Cast<UAnimSequence>(Dat.GetAsset());
-	//	if (tempAnim == nullptr) continue;
-	//	HostileAnimMap.Add(Dat.AssetName.ToString(), tempAnim);
-	//	UE_LOG(LogTemp, Log, TEXT("Loading Asset : %s"), *Dat.AssetName.ToString());
-	//}
-
 	SetBindDelegates();
-	//if (HasAuthority())
-	//{
-	//	DoAttack.BindUFunction(this, FName("ServerDoAttack"));
-	//}
 }
 
 void ACMonsterCharacter::UpdateMonsterHP_Implementation()
@@ -104,6 +86,9 @@ void ACMonsterCharacter::Tick(float DeltaTime)
 
 	UpdateMonsterHP();
 
+	//GetMesh()->GetBoneLocation("MOUNTAIN_DRAGON_-Head");
+	//if (HasAuthority()) DrawDebugSphere(GetWorld(), GetMesh()->GetBoneLocation("MOUNTAIN_DRAGON_-Head"), 120.f, 32.f, FColor::Blue);
+
 	if (TextRenderComponent == nullptr) return;
 	TextRenderComponent->SetText(FText::FromString(FString::SanitizeFloat(fHP)));
 }
@@ -120,6 +105,7 @@ float ACMonsterCharacter::TakeDamage(float DamageAmount, FDamageEvent const& Dam
 		UIController->SetDealingMonsterCharacter(this);
 	}
 
+	UE_LOG(LogTemp, Log, TEXT("Dealt Damage %f"), DamageAmount);
 
 	return TotalDamageAmount;
 }
@@ -137,6 +123,11 @@ void ACMonsterCharacter::SetHP_Implementation(float NewHP)
 	fHP = NewHP;
 }
 
+FVector ACMonsterCharacter::GetBoneLocation(FName BoneName)
+{
+	return GetMesh()->GetBoneLocation("MOUNTAIN_DRAGON_-Head");
+}
+
 
 bool ACMonsterCharacter::ServerDoAttack_Validate(const FString& AttackType)
 {
@@ -145,29 +136,22 @@ bool ACMonsterCharacter::ServerDoAttack_Validate(const FString& AttackType)
 
 void ACMonsterCharacter::ServerDoAttack_Implementation(const FString& AttackType)
 {
+	if (BiteAnimSequence == nullptr)
+	{
+		UE_LOG(LogTemp, Log, TEXT("ClientDoAttack_Implementation : %s Can Not Be Found"), *AttackType);
+		return;
+	}
+	GetMesh()->GetAnimInstance()->PlaySlotAnimationAsDynamicMontage(BiteAnimSequence, "DefaultSlot");
+
 	MulticastDoAttack(AttackType);
 }
 
 void ACMonsterCharacter::MulticastDoAttack_Implementation(const FString& AttackType)
 {
-	UE_LOG(LogTemp, Log, TEXT("ClientDoAttack_Implementation : Playing %s"), *AttackType);
-
-	//UAnimSequence** tempAnimsequence = HostileAnimMap.Find(AttackType);
-	//if (tempAnimsequence == nullptr)
-	//{
-	//	TArray<FString> Keys;
-	//	HostileAnimMap.GetKeys(Keys);
-	//	for (FString Key : Keys)
-	//	{
-	//		UE_LOG(LogTemp, Log, TEXT("\t Hostile Anim Key : %s"), *Key);
-	//	}
-	//	UE_LOG(LogTemp, Log, TEXT("ClientDoAttack_Implementation : %s Can Not Be Found"), *AttackType);
-	//	return;
-	//}
-	//GetMesh()->GetAnimInstance()->PlaySlotAnimationAsDynamicMontage(*tempAnimsequence, "DefaultSlot");
+	//UE_LOG(LogTemp, Log, TEXT("ClientDoAttack_Implementation : Playing %s"), *AttackType);
 	if (BiteAnimSequence == nullptr)
 	{
-		UE_LOG(LogTemp, Log, TEXT("ClientDoAttack_Implementation : %s Can Not Be Found"), *AttackType);
+		//UE_LOG(LogTemp, Log, TEXT("ClientDoAttack_Implementation : %s Can Not Be Found"), *AttackType);
 		return;
 	}
 	GetMesh()->GetAnimInstance()->PlaySlotAnimationAsDynamicMontage(BiteAnimSequence, "DefaultSlot");

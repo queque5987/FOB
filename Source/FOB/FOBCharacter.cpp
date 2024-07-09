@@ -12,6 +12,9 @@
 #include "FOBGameMode.h"
 #include "Components/TextRenderComponent.h"
 #include "CBullet.h"
+#include "PCH.h"
+#include "Net/UnrealNetwork.h"
+#include "CPlayerState.h"
 
 DEFINE_LOG_CATEGORY(LogTemplateCharacter);
 
@@ -53,12 +56,14 @@ AFOBCharacter::AFOBCharacter()
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
 	// are set in the derived blueprint asset named ThirdPersonCharacter (to avoid direct content references in C++)
 
-	fHP = 100.f;
-
 	TextRenderComponent = CreateDefaultSubobject<UTextRenderComponent>(TEXT("TextRenderComponent"));
 
 	TextRenderComponent->SetupAttachment(GetMesh());
 	TextRenderComponent->SetText(FText::FromString(FString::SanitizeFloat(fHP)));
+	TextRenderComponent->SetRelativeLocation(FVector(0.f, 0.f, 200.f));
+
+	GetMesh()->SetCollisionObjectType(COLLISION_CHANNEL_PLAYER);
+	GetMesh()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 }
 
 void AFOBCharacter::BeginPlay()
@@ -70,8 +75,35 @@ void AFOBCharacter::BeginPlay()
 void AFOBCharacter::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
-
+	
+	UpdateHP();
+	
 	TextRenderComponent->SetText(FText::FromString(FString::SanitizeFloat(fHP)));
+}
+
+void AFOBCharacter::PossessedBy(AController* NewController)
+{
+	Super::PossessedBy(NewController);
+
+	ACPlayerState* C_PlayerState = Cast<ACPlayerState>(GetPlayerState());
+	if (C_PlayerState == nullptr) return;
+
+	C_PlayerState->SetupDelegates();
+}
+
+void AFOBCharacter::UpdateHP_Implementation ()
+{
+	ACPlayerState* C_PlayerState = Cast<ACPlayerState>(GetPlayerState());
+	if (C_PlayerState == nullptr) return;
+
+	fHP = C_PlayerState->GetHP();
+}
+
+void AFOBCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(AFOBCharacter, fHP);
 }
 
 
@@ -157,4 +189,13 @@ void AFOBCharacter::LMBTriggered_Implementation()
 	GetWorld()->SpawnActor<ACBullet>(ACBullet::StaticClass(), GetActorLocation(), GetBaseAimRotation(), SpawnParam);
 
 	//GM->SpawnPotato(GetActorLocation(), GetBaseAimRotation() + FRotator(0.f, 0.f, 0.f));
+}
+
+float AFOBCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
+{
+	float Damaged = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
+
+	UE_LOG(LogTemp, Log, TEXT("AFOBCharacter - Took Damage %f From %s"), DamageAmount, *DamageCauser->GetName());
+
+	return Damaged;
 }

@@ -11,20 +11,6 @@ ACGameState::ACGameState() : Super()
 
 void ACGameState::Tick(float DeltaTime)
 {
-	//TArray<APawn*> Keys;
-	//SpawnedMonsterStateMap.GetKeys(Keys);
-	//for (int i = 0; i < SpawnedMonsterStateMap.Num(); i++)
-	//{
-	//	float* NewHP = SpawnedMonsterStateMap.Find(Keys[i]);
-	//	if (NewHP == nullptr) continue;
-
-	//	IMonsterCharacter* tempMonster = Cast<IMonsterCharacter>(Keys[i]);
-	//	if (tempMonster == nullptr) continue;
-
-	//	tempMonster->SetHP(*NewHP);
-
-	//	UE_LOG(LogTemp, Log, TEXT("SpawnedMonsterStateMap [%d]: %s - %f"), i, *Keys[i]->GetName(), *SpawnedMonsterStateMap.Find(Keys[i]));
-	//}
 }
 
 float ACGameState::AddSpawnedMonsterHP(APawn* SpawnedMonster, float MaxHP)

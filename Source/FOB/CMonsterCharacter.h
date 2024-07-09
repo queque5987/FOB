@@ -29,11 +29,11 @@ protected:
 	float MaxHP;
 	UFUNCTION(Server, Unreliable)
 	void UpdateMonsterHP();
-	void UpdateMonsterHP_Implementation();
+	//void UpdateMonsterHP_Implementation();
 
 	UFUNCTION(Server, Unreliable)
 	void DamageMonster(float DamageAmount);
-	void DamageMonster_Implementation(float DamageAmount);
+	//void DamageMonster_Implementation(float DamageAmount);
 
 	// Can't be replicated
 	TMap<FString, class UAnimSequence*> HostileAnimMap;
@@ -65,4 +65,6 @@ public:
 
 	UFUNCTION(NetMulticast, Reliable)
 	void MulticastDoAttack(const FString& AttackType);
+
+	virtual FVector GetBoneLocation(FName BoneName) override;
 };

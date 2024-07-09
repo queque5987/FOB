@@ -69,24 +69,23 @@ void ACBullet::CheckOverlapingActor()
 			{
 				FDamageEvent DamageEvent = FDamageEvent();
 
-				//UGameplayStatics::ApplyPointDamage(Monster, 1.f, Monster->GetActorLocation()-GetActorLocation(), HR, GetInstigatorController(), this, DamageType)
-
 				ACharacter* OwningPlayer = Cast<ACharacter>(GetOwner());
 				if (OwningPlayer != nullptr)
 				{
 					UE_LOG(LogTemp, Log, TEXT("Dealt Damage"));
-					float DealtDamage = Monster->TakeDamage(
-						1.f,
-						DamageEvent,
-						OwningPlayer->GetController(),
-						OwningPlayer
-					);
+					//float DealtDamage = Monster->TakeDamage(
+					//	1.f,
+					//	DamageEvent,
+					//	OwningPlayer->GetController(),
+					//	OwningPlayer
+					//);
+
+					UGameplayStatics::ApplyPointDamage(Monster, 1.f, Monster->GetActorLocation() - GetActorLocation(), HR, OwningPlayer->GetController(), OwningPlayer, DamageType);
 				}
-
-
-				Destroy();
 			}
 		}
+
+		Destroy();
 	}
 
 	//DrawDebugSphere(GetWorld(), GetActorLocation(), 30.f, 32.f, bHit? FColor::Green : FColor::Red, false, 0.2f);
