@@ -20,3 +20,22 @@ fHP 변수가 Replicated되지 않아서 발생했던 문제였음
 ### 해결
 
 HP 변수에 UPROPERTY(replicated) 추가 + GetLifetimeReplicatedProps함수 override하여 DOREPLIFETIME(ACMonsterCharacter, fHP) 추가
+
+## 2. Monster의 AnimSequence 각 클라이언트에서 재생
+
+#### BT_Task Attack 실행 시
+ACMonsterCharacter 클래스에 선언되어 있는 DoAttack Delegate를 Execute하여 AnimSequence를 재생 -->
+
+오프라인에서 정상적으로 애니메이션이 실행되나 Server 상에서 실행되지 않는 현상 발생 -->
+
+Client 상에서만 실행되고 있어 Server -> MultiCast 순으로 실행하여 해결
+
+#### 생성자에서 AnimSequence Load 시
+
+AnimSequence가 저장되어 있는 디렉토리를 AssetRegistryModule을 사용하여 전부 TMap<FString, AnimSequence*> 에 저장하였음 -->
+
+Animation 재생 시 Client 상에서는 실행에 문제 없으나, Server 콘솔에서 Access Violation 발생 -->
+
+Replicated 변수로 만들고자 하였으나 TMap은 지원하지 않음 -->
+
+ConstructorHelpers 사용하여 개별적으로 멤버변수에 저장하도록하여 해결
