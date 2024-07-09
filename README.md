@@ -36,6 +36,35 @@ AnimSequence가 저장되어 있는 디렉토리를 AssetRegistryModule을 사�
 
 Animation 재생 시 Client 상에서는 실행에 문제 없으나, Server 콘솔에서 Access Violation 발생 -->
 
-Replicated 변수로 만들고자 하였으나 TMap은 지원하지 않음 -->
+Replicated 변수로 만들지 않아 발생한 문제였음
 
-ConstructorHelpers 사용하여 개별적으로 멤버변수에 저장하도록하여 해결
+### 해결
+
+TMap은 Replicate를 지원하지 않아 ConstructorHelpers 사용하여 개별적으로 멤버변수에 저장하도록하여 해결
+
+## 3. Monster 공격 판정
+
+#### Sequence Animation Play 시
+NotifyState > NotifyTick에서 Bone Location에 충돌 판정을 시도하여 공격 판정을 구현 -->
+
+DrawDebugSphere를 통해 디버그해본 결과 Animation에 따라 Bone Transform이 변하지 않음 -->
+
+SkeletalMesh의 VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones로 변경하여 해결
+
+#### 공격 판정 후 대미지 전달 시
+충돌 시 Character 클래스에서 TakeDamage를 직접 호출하여 구현 -->
+
+UGameplayStatics::ApplyPointDamage를 사용하여 내부 함수에서 TakeDamage가 호출되도록 수정 -->
+
+OnTakeAnyDamage Delegate에 PlayerState의 멤버함수를 Bind시켜 PlayerState에 플레이어의 HP를 업데이트하도록 구현하였으나 동작 안 함 -->
+
+PlayerState의 OnTakeAnyDamage에 바인드되어 있었음 -> Character의 OnTakeAnyDamage에 바인드 -->
+
+PlayerState의 BegeinPlay에서 바인드하였으나 BroadCast되었을 때 콜백함수 실행되지 않음 -->
+
+Character가 Possess되기 전에 바인드되어 발생한 문제였음
+
+### 해결
+
+바인드 하는 시기를 BeginPlay보다 늦추기 위해 Character의 PossessedBy에서 바인드하도록 하게 하여 해결
+
