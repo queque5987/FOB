@@ -1,12 +1,13 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "CPlayerState.h"
+#include "Player/CPlayerState.h"
 #include "Net/UnrealNetwork.h"
-#include "FOBCharacter.h"
+#include "Player/FOBCharacter.h"
 
 ACPlayerState::ACPlayerState() : Super()
 {
+	PlayerAnimStatus = 0;
 }
 
 void ACPlayerState::BeginPlay()
@@ -53,8 +54,17 @@ void ACPlayerState::TakeAwayHP_Implementation(float DamageAmount)
 {
 	fHP -= DamageAmount;
 
-	//UE_LOG(LogTemp, Log, TEXT("ACPlayerState - TakeAwayHP %f"), DamageAmount);
 	UE_LOG(LogTemp, Log, TEXT("ACPlayerState - NewHP %f"), fHP);
+}
+
+void ACPlayerState::SetPlayerAnimStatus_Implementation(int32 PlayerAnimStatusType, bool e)
+{
+	if (e != GetPlayerAnimStatus(PlayerAnimStatusType)) PlayerAnimStatus += e ? PlayerAnimStatusType : -PlayerAnimStatusType;
+}
+
+bool ACPlayerState::GetPlayerAnimStatus(int32 PlayerAnimStatusType)
+{
+	return (PlayerAnimStatus & PlayerAnimStatusType);
 }
 
 void ACPlayerState::OnTakeDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser)

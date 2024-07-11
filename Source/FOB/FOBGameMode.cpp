@@ -1,20 +1,22 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "FOBGameMode.h"
-#include "FOBCharacter.h"
 #include "UObject/ConstructorHelpers.h"
 #include "CBullet.h"
-#include "CPlayerController.h"
-#include "CPlayerState.h"
+
+#include "Player/FOBCharacter.h"
+#include "Player/CPlayerController.h"
+#include "Player/CPlayerState.h"
 #include "CGameState.h"
 
 AFOBGameMode::AFOBGameMode()
 {
-	static ConstructorHelpers::FClassFinder<APawn> PlayerPawnBPClass(TEXT("/Game/ThirdPerson/Blueprints/BP_ThirdPersonCharacter"));
-	if (PlayerPawnBPClass.Class != NULL)
-	{
-		DefaultPawnClass = PlayerPawnBPClass.Class;
-	}
+	//static ConstructorHelpers::FClassFinder<APawn> PlayerPawnBPClass(TEXT("/Game/ThirdPerson/Blueprints/BP_ThirdPersonCharacter"));
+	//if (PlayerPawnBPClass.Class != NULL)
+	//{
+	//	DefaultPawnClass = PlayerPawnBPClass.Class;
+	//}
+	DefaultPawnClass = AFOBCharacter::StaticClass();
 	PlayerControllerClass = ACPlayerController::StaticClass();
 	PlayerStateClass = ACPlayerState::StaticClass();
 	GameStateClass = ACGameState::StaticClass();

@@ -2,8 +2,8 @@
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/DamageType.h"
 #include "Engine/DamageEvents.h"
-#include "FOBCharacter.h"
-#include "MonsterCharacter.h"
+#include "Player/FOBCharacter.h"
+#include "Monster/MonsterCharacter.h"
 #include "PCH.h"
 
 void UNotifyState_ApplyDamage::NotifyBegin(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, float TotalDuration, const FAnimNotifyEventReference& EventReference)
@@ -36,24 +36,22 @@ void UNotifyState_ApplyDamage::NotifyTick(USkeletalMeshComponent* MeshComp, UAni
 
 	DrawDebugSphere(MeshComp->GetWorld(), HeadPos, 120.f, 32.f, bHit ? FColor::Green : FColor::Red);
 
-	//if (!bHit) UE_LOG(LogTemp, Log, TEXT("No Hit Actor"));
-
-	if (bHit)
+	if (!bHit)
 	{
-		for (const FHitResult HR : HitResults)
-		{
-			//UE_LOG(LogTemp, Log, TEXT("Hit Actor : %s"), *HR.GetActor()->GetName());
+		UE_LOG(LogTemp, Log, TEXT("No Hit Actor"));
+		return;
+	}
 
-			AFOBCharacter* Player = Cast<AFOBCharacter>(HR.GetActor());
-			if (Player != nullptr)
-			{
-				FDamageEvent DamageEvent = FDamageEvent();
+	for (const FHitResult HR : HitResults)
+	{
+		AFOBCharacter* Player = Cast<AFOBCharacter>(HR.GetActor());
+		if (Player == nullptr) continue;
 
-				UE_LOG(LogTemp, Log, TEXT("Monster Dealt Damage to Player"));
+		FDamageEvent DamageEvent = FDamageEvent();
 
-				UGameplayStatics::ApplyPointDamage(Player, 1.f, Player->GetActorLocation() - HR.Location, HR, nullptr, MeshComp->GetOwner(), NULL);
-			}
-		}
+		UE_LOG(LogTemp, Log, TEXT("Monster Dealt Damage to Player"));
+
+		UGameplayStatics::ApplyPointDamage(Player, 1.f, Player->GetActorLocation() - HR.Location, HR, nullptr, MeshComp->GetOwner(), NULL);
 	}
 }
 

@@ -24,10 +24,10 @@ class FOB_API ACPlayerState : public APlayerState
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
+	int32 PlayerAnimStatus;
 public:
 	UFUNCTION(NetMulticast, Reliable)
 	void SetupDelegates();
-
 
 	UFUNCTION(Client, Reliable)
 	void SetMaxHP(float NewMaxHP);
@@ -39,6 +39,11 @@ public:
 
 	float GetMaxHP() { return MaxHP; }
 	float GetHP() { return fHP; }
+
+	UFUNCTION(Server, Reliable)
+	void SetPlayerAnimStatus(int32 PlayerAnimStatusType, bool e);
+
+	bool GetPlayerAnimStatus(int32 PlayerAnimStatusType);
 
 	UFUNCTION()
 	void OnTakeDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser);

@@ -4,7 +4,7 @@
 #include "BTTask_FindPatrolPos.h"
 #include "GameFramework/Pawn.h"
 #include "BehaviorTree/BlackboardComponent.h"
-#include "CMonsterAIController.h"
+#include "Monster/CMonsterAIController.h"
 #include "NavigationSystem.h"
 
 UBTTask_FindPatrolPos::UBTTask_FindPatrolPos()

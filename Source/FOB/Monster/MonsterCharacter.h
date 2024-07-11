@@ -17,7 +17,7 @@ class FOB_API IMonsterCharacter
 
 public:
 
-	virtual void SetHP(float NewHP) {}
+	//virtual void SetHP(float NewHP) {}
 
 	virtual float GetHP() { return 0.f; }
 	virtual float GetMaxHP() { return 0.f; }

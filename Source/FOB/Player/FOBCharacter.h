@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "Logging/LogMacros.h"
+#include "Player/PlayerCharacter.h"
 #include "FOBCharacter.generated.h"
 
 class USpringArmComponent;
@@ -14,9 +15,10 @@ class UInputAction;
 struct FInputActionValue;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
+DECLARE_DELEGATE_OneParam(FLookAxisUpdated, FRotator);
 
 UCLASS(config=Game)
-class AFOBCharacter : public ACharacter
+class AFOBCharacter : public ACharacter, public IPlayerCharacter
 {
 	GENERATED_BODY()
 
@@ -26,33 +28,61 @@ class AFOBCharacter : public ACharacter
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	UCameraComponent* FollowCamera;
 	
+
+// Input Settings
+// Input Properties
+
+private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputMappingContext* DefaultMappingContext;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* JumpAction;
-
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* MoveAction;
-
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* LookAction;
-
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* ShiftAction;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* LMBAction;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* RMBAction;
+
+	float CameraBoomLength_TPS;
+	float CameraBoomLength_FPS;
+	float CameraRelativeLocationY_TPS;
+	float CameraRelativeLocationY_FPS;
+
+	FRotator ViewRotation_Delta;
+
+// Input Events
+	UFUNCTION(Server, Unreliable)
+	void LMBTriggered();
+	UFUNCTION(Server, Unreliable)
+	void RMBStarted();
+	UFUNCTION(Server, Unreliable)
+	void RMBCompleted();
+	UFUNCTION(Server, Unreliable)
+	void ShiftTriggered();
+	UFUNCTION(Server, Unreliable)
+	void ShiftCompleted();
+
+	UFUNCTION(Client, Reliable)
+	void SetAimingMode(bool e, float DeltaSeconds);
+
+	void Move(const FInputActionValue& Value);
+	void Look(const FInputActionValue& Value);
+
+// Input Settings End
+
 
 public:
 	AFOBCharacter();
 
-	UFUNCTION(Server, Unreliable)
-	void LMBTriggered();
-	virtual void LMBTriggered_Implementation();
+	FLookAxisUpdated LookAxisUpdated;
 
 	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser) override;
-protected:
-
-	void Move(const FInputActionValue& Value);
-	void Look(const FInputActionValue& Value);
 			
 protected:
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
@@ -63,13 +93,46 @@ public:
 	FORCEINLINE class USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
 	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
 
+	UFUNCTION()
+	void OnRep_MaxWalkSpeed();
+
+// PlayerCharacter Interface		 //
+// * EquipWeapon Status				//
+public:
+	UPROPERTY(Replicated, ReplicatedUsing = OnRep_EquippedWeapon_R)
+	AActor* EquippedWeapon_R;
+	UPROPERTY(Replicated, ReplicatedUsing = OnRep_EquippedWeapon_L)
+	AActor* EquippedWeapon_L;
+
+	UFUNCTION(Server, Reliable)
+	virtual void ServerEquipItem(class AActor* WeaponToEquip) override;
+	UFUNCTION(Server, Reliable)
+	virtual void ServerUnEquipItem() override;
+
 private:
+	UFUNCTION(NetMulticast, Reliable)
+	void OnRep_EquippedWeapon_R();
+	UFUNCTION(NetMulticast, Reliable)
+	void OnRep_EquippedWeapon_L();
+
+// * EquipWeapon Status End			//
+	class ACPlayerState* C_PlayerState;
+
+	UPROPERTY(Replicated, Transient, ReplicatedUsing = OnRep_MaxWalkSpeed)
+	float MinWalkSpeed;
+	UPROPERTY(Replicated, Transient, ReplicatedUsing = OnRep_MaxWalkSpeed)
+	float MaxWalkSpeed;
+	UPROPERTY(Replicated, Transient)
+	float MaxSprintSpeed;
+
+	UFUNCTION(Server, Reliable)
+	void ServerSetMaxWalkSpeed(float NewMaxWalkSpeed);
+
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	class UTextRenderComponent* TextRenderComponent;
 	UPROPERTY(Replicated)
 	float fHP;
-
 
 	UFUNCTION(Server, Reliable)
 	void UpdateHP();

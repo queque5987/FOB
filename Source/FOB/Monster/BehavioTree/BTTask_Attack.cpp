@@ -2,8 +2,8 @@
 
 
 #include "BTTask_Attack.h"
-#include "CMonsterAIController.h"
-#include "CMonsterCharacter.h"
+#include "Monster/CMonsterAIController.h"
+#include "Monster/CMonsterCharacter.h"
 
 EBTNodeResult::Type UBTTask_Attack::ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory)
 {

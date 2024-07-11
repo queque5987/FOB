@@ -17,25 +17,19 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
-	//UPROPERTY(EditAnywhere)
-	//class USkeletalMeshComponent* SkeletalMeshComponent;
+
 	UPROPERTY(EditAnywhere)
 	class UTextRenderComponent* TextRenderComponent;
-	//UPROPERTY()
-	//class UMonsterMovementComponent* MonsterMovementComponent;
 
-	UPROPERTY(replicated)
+	UPROPERTY(Replicated, Transient, ReplicatedUsing = OnRep_HP)
 	float fHP;
 	float MaxHP;
 	UFUNCTION(Server, Unreliable)
 	void UpdateMonsterHP();
-	//void UpdateMonsterHP_Implementation();
 
 	UFUNCTION(Server, Unreliable)
 	void DamageMonster(float DamageAmount);
-	//void DamageMonster_Implementation(float DamageAmount);
 
-	// Can't be replicated
 	TMap<FString, class UAnimSequence*> HostileAnimMap;
 	TArray<FAssetData> AssetData;
 
@@ -44,6 +38,9 @@ protected:
 
 	UFUNCTION(NetMulticast, Reliable)
 	void SetBindDelegates();
+
+	UFUNCTION()
+	void OnRep_HP();
 public:	
 	virtual void Tick(float DeltaTime) override;
 
@@ -51,9 +48,8 @@ public:
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-	UFUNCTION(Client, Unreliable)
-	virtual void SetHP(float NewHP) override;
-	virtual void SetHP_Implementation(float NewHP);
+	//UFUNCTION(Client, Unreliable)
+	//virtual void SetHP(float NewHP) override;
 
 	virtual float GetHP() override { return fHP; };
 	virtual float GetMaxHP() override { return MaxHP; }
@@ -67,4 +63,7 @@ public:
 	void MulticastDoAttack(const FString& AttackType);
 
 	virtual FVector GetBoneLocation(FName BoneName) override;
+
+	UFUNCTION()
+	void Died();
 };

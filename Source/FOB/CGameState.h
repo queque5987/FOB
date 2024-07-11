@@ -18,8 +18,10 @@ class FOB_API ACGameState : public AGameStateBase
 
 	TMap<class APawn*, float> SpawnedMonsterStateMap;
 
-
 	virtual void Tick(float DeltaTime) override;
+
+	void MonsterDied(APawn* SpawnedMonster);
+
 public:
 
 	float AddSpawnedMonsterHP(APawn* SpawnedMonster, float MaxHP);

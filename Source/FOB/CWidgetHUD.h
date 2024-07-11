@@ -6,7 +6,7 @@
 #include "Blueprint/UserWidget.h"
 #include "Components/ProgressBar.h"
 #include "Components/CanvasPanel.h"
-#include "CMonsterCharacter.h"
+#include "Monster/CMonsterCharacter.h"
 #include "CWidgetHUD.generated.h"
 
 UCLASS()

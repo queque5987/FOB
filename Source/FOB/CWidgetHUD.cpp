@@ -2,7 +2,7 @@
 
 
 #include "CWidgetHUD.h"
-#include "CPlayerState.h"
+#include "Player/CPlayerState.h"
 
 void UCWidgetHUD::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 {
@@ -13,7 +13,7 @@ void UCWidgetHUD::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 	{
 		MonsterHPBar->SetVisibility(ESlateVisibility::HitTestInvisible);
 		MonsterHPBar->SetPercent(MonsterCharacter->GetHP() / MonsterCharacter->GetMaxHP());
-		UE_LOG(LogTemp, Log, TEXT("HP : %f / MaxHP : %f"), MonsterCharacter->GetHP(), MonsterCharacter->GetMaxHP());
+		//UE_LOG(LogTemp, Log, TEXT("HP : %f / MaxHP : %f"), MonsterCharacter->GetHP(), MonsterCharacter->GetMaxHP());
 	}
 	else
 	{

@@ -2,11 +2,12 @@
 #include "Components/StaticMeshComponent.h"
 #include "Components/SphereComponent.h"
 #include "GameFramework/Character.h"
-#include "CMonsterCharacter.h"
+#include "Monster/CMonsterCharacter.h"
 #include "Engine/DamageEvents.h"
 #include "PCH.h"
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/DamageType.h"
+#include "Player/UIController.h"
 
 ACBullet::ACBullet()
 {
@@ -38,6 +39,9 @@ void ACBullet::BeginPlay()
 
 void ACBullet::CheckOverlapingActor()
 {
+	ACharacter* OwningPlayer = Cast<ACharacter>(GetOwner());
+	if (OwningPlayer == nullptr) return;
+
 	FHitResult HitResult;
 	TArray<FHitResult> HitResults;
 	FCollisionObjectQueryParams tempParam;
@@ -58,31 +62,25 @@ void ACBullet::CheckOverlapingActor()
 		tempCollisionShpae
 	);
 
-	if (bHit)
+	FDamageEvent DamageEvent = FDamageEvent();
+
+	if (!bHit) return;
+
+	for (const FHitResult HR : HitResults)
 	{
+		UE_LOG(LogTemp, Log, TEXT("Hit Actor : %s"), *HR.GetActor()->GetName());
+		ACMonsterCharacter* Monster = Cast<ACMonsterCharacter>(HR.GetActor());
+		if (Monster == nullptr) continue;
 
-		for (const FHitResult HR : HitResults)
+		if (OwningPlayer->HasAuthority())
 		{
-			UE_LOG(LogTemp, Log, TEXT("Hit Actor : %s"), *HR.GetActor()->GetName());
-			ACMonsterCharacter* Monster = Cast<ACMonsterCharacter>(HR.GetActor());
-			if (Monster != nullptr)
-			{
-				FDamageEvent DamageEvent = FDamageEvent();
-
-				ACharacter* OwningPlayer = Cast<ACharacter>(GetOwner());
-				if (OwningPlayer != nullptr)
-				{
-					UE_LOG(LogTemp, Log, TEXT("Dealt Damage"));
-					//float DealtDamage = Monster->TakeDamage(
-					//	1.f,
-					//	DamageEvent,
-					//	OwningPlayer->GetController(),
-					//	OwningPlayer
-					//);
-
-					UGameplayStatics::ApplyPointDamage(Monster, 1.f, Monster->GetActorLocation() - GetActorLocation(), HR, OwningPlayer->GetController(), OwningPlayer, DamageType);
-				}
-			}
+			UGameplayStatics::ApplyPointDamage(Monster, 1.f, Monster->GetActorLocation() - GetActorLocation(), HR, OwningPlayer->GetController(), OwningPlayer, DamageType);
+		}
+		else
+		{
+			IUIController* UIController = Cast<IUIController>(OwningPlayer->GetController());
+			if (UIController == nullptr) continue;
+			UIController->SetDealingMonsterCharacter(Monster);
 		}
 
 		Destroy();

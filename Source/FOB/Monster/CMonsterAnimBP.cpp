@@ -3,7 +3,7 @@
 
 #include "CMonsterAnimBP.h"
 #include "GameFramework/PawnMovementComponent.h"
-#include "CMonsterCharacter.h"
+#include "Monster/CMonsterCharacter.h"
 
 UCMonsterAnimBP::UCMonsterAnimBP() : Super()
 {

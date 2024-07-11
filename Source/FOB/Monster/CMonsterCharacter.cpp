@@ -2,13 +2,13 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/TextRenderComponent.h"
 #include "PCH.h"
-#include "UIController.h"
+#include "Player/UIController.h"
 #include "CGameState.h"
 #include "Net/UnrealNetwork.h"
-#include "CMonsterAnimBP.h"
-#include "CMonsterAIController.h"
+#include "Monster/CMonsterAnimBP.h"
+#include "Monster/CMonsterAIController.h"
 #include "Components/ShapeComponent.h"
-#include "MonsterMovementComponent.h"
+#include "Monster/MonsterMovementComponent.h"
 #include "AssetRegistry/AssetRegistryModule.h"
 
 ACMonsterCharacter::ACMonsterCharacter(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer.SetDefaultSubobjectClass<UMonsterMovementComponent>(ACharacter::CharacterMovementComponentName))
@@ -72,7 +72,7 @@ void ACMonsterCharacter::DamageMonster_Implementation(float DamageAmount)
 {
 	ACGameState* GameState = Cast<ACGameState>(GetWorld()->GetGameState());
 	if (GameState == nullptr) return;
-	GameState->TakeDamageSpawnedMonster(this, DamageAmount);
+	fHP = GameState->TakeDamageSpawnedMonster(this, DamageAmount);
 }
 
 void ACMonsterCharacter::SetBindDelegates_Implementation()
@@ -80,14 +80,18 @@ void ACMonsterCharacter::SetBindDelegates_Implementation()
 	DoAttack.BindUFunction(this, FName("ServerDoAttack"));
 }
 
+void ACMonsterCharacter::OnRep_HP()
+{
+	if (fHP > 0.f) return;
+
+	UE_LOG(LogTemp, Log, TEXT("Died %f"), fHP);
+}
+
 void ACMonsterCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	UpdateMonsterHP();
-
-	//GetMesh()->GetBoneLocation("MOUNTAIN_DRAGON_-Head");
-	//if (HasAuthority()) DrawDebugSphere(GetWorld(), GetMesh()->GetBoneLocation("MOUNTAIN_DRAGON_-Head"), 120.f, 32.f, FColor::Blue);
+	//UpdateMonsterHP();
 
 	if (TextRenderComponent == nullptr) return;
 	TextRenderComponent->SetText(FText::FromString(FString::SanitizeFloat(fHP)));
@@ -98,12 +102,6 @@ float ACMonsterCharacter::TakeDamage(float DamageAmount, FDamageEvent const& Dam
 	float TotalDamageAmount = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
 
 	DamageMonster(DamageAmount);
-
-	IUIController* UIController = Cast<IUIController>(EventInstigator);
-	if (UIController != nullptr)
-	{
-		UIController->SetDealingMonsterCharacter(this);
-	}
 
 	UE_LOG(LogTemp, Log, TEXT("Dealt Damage %f"), DamageAmount);
 
@@ -118,14 +116,18 @@ void ACMonsterCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& O
 	DOREPLIFETIME(ACMonsterCharacter, BiteAnimSequence);
 }
 
-void ACMonsterCharacter::SetHP_Implementation(float NewHP)
-{
-	fHP = NewHP;
-}
+//void ACMonsterCharacter::SetHP_Implementation(float NewHP)
+//{
+//	fHP = NewHP;
+//}
 
 FVector ACMonsterCharacter::GetBoneLocation(FName BoneName)
 {
 	return GetMesh()->GetBoneLocation("MOUNTAIN_DRAGON_-Head");
+}
+
+void ACMonsterCharacter::Died()
+{
 }
 
 
@@ -141,7 +143,7 @@ void ACMonsterCharacter::ServerDoAttack_Implementation(const FString& AttackType
 		UE_LOG(LogTemp, Log, TEXT("ClientDoAttack_Implementation : %s Can Not Be Found"), *AttackType);
 		return;
 	}
-	GetMesh()->GetAnimInstance()->PlaySlotAnimationAsDynamicMontage(BiteAnimSequence, "DefaultSlot");
+	//GetMesh()->GetAnimInstance()->PlaySlotAnimationAsDynamicMontage(BiteAnimSequence, "DefaultSlot");
 
 	MulticastDoAttack(AttackType);
 }
