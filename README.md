@@ -74,7 +74,9 @@ Character가 Possess되기 전에 바인드되어 발생한 문제였음
 #### 초기 구현 방향
 AnimInstance에서 내부 변수들을 업데이트, AnimBlueprint에서 Rotator 변수를 사용하여 AimOffset 블렌드를 하는 방향으로 구현 -->
 
-자신의 Animation은 Bind 되나, 다른 클라이언트에서 봤을 때 적용되지 않는 현상 발생 -->
+자신의 Animation은 Bind 되나, 다른 클라이언트에서 봤을 때 적용되지 않는 현상 발생
+
+#### 동기화 되지 않는 변수 검출
 
 검색 결과 AnimInstance에서 Replicate를 구현할 수 없다는 점을 알아냄 -->
 
