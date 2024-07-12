@@ -1,4 +1,4 @@
-## 1. MonsterCharacter의 HP 각 클라이언트에서의 동기화
+## 1. MonsterCharacter의 HP 각 클라이언트에서의 동기화 문제
 
 #### 대미지 전달 시
 
@@ -9,7 +9,7 @@ TakeDamage Override하여 Server함수 DamageMonster 호출 -->
 
 GameState에서 HP -= DamageAmount
 
-#### HP 동기화 시
+#### HP 동기화 시 클라이언트에서 동기화를 시키던 문제
 
 MonsterChracter Tick에서 GameState에 접근하여 HP 정보 받아와 멤버변수에 업데이트 -->
 
@@ -21,16 +21,17 @@ fHP 변수가 Replicated되지 않아서 발생했던 문제였음
 
 HP 변수에 UPROPERTY(replicated) 추가 + GetLifetimeReplicatedProps함수 override하여 DOREPLIFETIME(ACMonsterCharacter, fHP) 추가
 
-## 2. Monster의 AnimSequence 각 클라이언트에서 재생
+## 2. Monster의 AnimSequence 각 클라이언트에서 재생 불가 이슈
 
-#### BT_Task Attack 실행 시
+#### BT_Task Attack 실행 시 애니메이션 Server 동기화 문제
+
 ACMonsterCharacter 클래스에 선언되어 있는 DoAttack Delegate를 Execute하여 AnimSequence를 재생 -->
 
 오프라인에서 정상적으로 애니메이션이 실행되나 Server 상에서 실행되지 않는 현상 발생 -->
 
 Client 상에서만 실행되고 있어 Server -> MultiCast 순으로 실행하여 해결
 
-#### 생성자에서 AnimSequence Load 시
+#### 생성자에서 AnimSequence Load 시 실행 오류
 
 AnimSequence가 저장되어 있는 디렉토리를 AssetRegistryModule을 사용하여 전부 TMap<FString, AnimSequence*> 에 저장하였음 -->
 
@@ -42,16 +43,16 @@ Replicated 변수로 만들지 않아 발생한 문제였음
 
 TMap은 Replicate를 지원하지 않아 ConstructorHelpers 사용하여 개별적으로 멤버변수에 저장하도록하여 해결
 
-## 3. Monster 공격 판정
+## 3. Monster 공격 판정 이슈
 
-#### Sequence Animation Play 시
+#### Sequence Animation Play 시 Server와 Client 간의 동기화 문제
 NotifyState > NotifyTick에서 Bone Location에 충돌 판정을 시도하여 공격 판정을 구현 -->
 
 DrawDebugSphere를 통해 디버그해본 결과 Animation에 따라 Bone Transform이 변하지 않음 -->
 
 SkeletalMesh의 VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones로 변경하여 해결
 
-#### 공격 판정 후 대미지 전달 시
+#### 공격 판정 후 플레이어에게 대미지 전달 시 반응하지 않는 오류
 충돌 시 Character 클래스에서 TakeDamage를 직접 호출하여 구현 -->
 
 UGameplayStatics::ApplyPointDamage를 사용하여 내부 함수에서 TakeDamage가 호출되도록 수정 -->
@@ -68,3 +69,17 @@ Character가 Possess되기 전에 바인드되어 발생한 문제였음
 
 바인드 하는 시기를 BeginPlay보다 늦추기 위해 Character의 PossessedBy에서 바인드하도록 하게 하여 해결
 
+## 4. AimOffset 적용 시 다른 클라이언트에서 반영되지 않는 이슈
+
+#### 초기 구현 방향
+AnimInstance에서 내부 변수들을 업데이트, AnimBlueprint에서 Rotator 변수를 사용하여 AimOffset 블렌드를 하는 방향으로 구현 -->
+
+자신의 Animation은 Bind 되나, 다른 클라이언트에서 봤을 때 적용되지 않는 현상 발생 -->
+
+검색 결과 AnimInstance에서 Replicate를 구현할 수 없다는 점을 알아냄 -->
+
+Character 클래스 Tick에서 ViewRoatation을 주기적으로 업데이트하여 Replicate함 -->
+
+Server에서 캐릭터의 ViewRotation을 구할 수 없으므로, Client에서 ViewRotation을 구한 뒤 Server에서 멤버변수에 할당하는 방식으로 구현 -->
+
+AnimInstance는 Character에서 ViewRotation을 Get하여 AimOffset에 전달
