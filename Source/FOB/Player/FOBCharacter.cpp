@@ -19,6 +19,7 @@
 #include "InputActionValue.h"
 #include "InputAction.h"
 #include "Weapon/Weapon.h"
+#include "Player/CPlayerAnimBP.h"
 
 DEFINE_LOG_CATEGORY(LogTemplateCharacter);
 
@@ -112,6 +113,8 @@ AFOBCharacter::AFOBCharacter()
 void AFOBCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+
+	AnimInstance = Cast<UCPlayerAnimBP>(GetMesh()->GetAnimInstance());
 }
 
 void AFOBCharacter::Tick(float DeltaSeconds)
@@ -120,8 +123,8 @@ void AFOBCharacter::Tick(float DeltaSeconds)
 	
 	UpdateHP();
 	
-	TextRenderComponent->SetText(FText::FromString(FString::SanitizeFloat(fHP)));
-
+	//TextRenderComponent->SetText(FText::FromString(FString::SanitizeFloat(fHP)));
+	TextRenderComponent->SetText(FText::FromString(ViewRotation_Delta.ToString()));
 	if (C_PlayerState == nullptr) return;
 
 // Dash Move Speed Set
@@ -135,6 +138,18 @@ void AFOBCharacter::Tick(float DeltaSeconds)
 	}
 
 // Aiming
+
+	if (HasAuthority())
+	{
+		ClientSendViewRotation_Delta();
+	}
+	//if (!HasAuthority())
+	//{
+	//	SetViewRotation_Delta(
+	//		(GetViewRotation() - GetActorRotation()).GetNormalized()
+	//	);
+	//}
+
 	SetAimingMode(C_PlayerState->GetPlayerAnimStatus(PLAYER_AIMING), DeltaSeconds);
 }
 
@@ -197,10 +212,12 @@ void AFOBCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLif
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(AFOBCharacter, fHP);
+	DOREPLIFETIME(AFOBCharacter, MinWalkSpeed);
 	DOREPLIFETIME(AFOBCharacter, MaxWalkSpeed);
 	DOREPLIFETIME(AFOBCharacter, MaxSprintSpeed);
 	DOREPLIFETIME(AFOBCharacter, EquippedWeapon_R);
 	DOREPLIFETIME(AFOBCharacter, EquippedWeapon_L);
+	DOREPLIFETIME(AFOBCharacter, ViewRotation_Delta);
 }
 
 
@@ -279,17 +296,18 @@ void AFOBCharacter::ShiftCompleted_Implementation()
 void AFOBCharacter::SetAimingMode_Implementation(bool e, float DeltaSeconds)
 {
 	FVector CamCurrLoc = FollowCamera->GetRelativeLocation();
-
+	float ViewRotation_Delta_Pitch = ViewRotation_Delta.Pitch;
+	if (ViewRotation_Delta_Pitch > 180.f) ViewRotation_Delta_Pitch -= 360.f;
 	CameraBoom->TargetArmLength = FMath::Lerp(CameraBoom->TargetArmLength, e ? CameraBoomLength_FPS : CameraBoomLength_TPS, 0.5f);
 
 	FollowCamera->SetRelativeLocation(
 		FVector(
 			e ? ( // Camera Move Forward/Backward At Aim Mode
-				ViewRotation_Delta.Pitch > 0 ?
-					ViewRotation_Delta.Pitch / 45.f * -15.f : ViewRotation_Delta.Pitch / 45.f * -30.f
+				ViewRotation_Delta_Pitch > 0 ?
+				ViewRotation_Delta_Pitch / 45.f * -15.f : ViewRotation_Delta_Pitch / 45.f * -30.f
 				) : CamCurrLoc.X,
 			FMath::Lerp(CamCurrLoc.Y, e ? CameraRelativeLocationY_FPS : CameraRelativeLocationY_TPS, 0.5f),
-			e ? FMath::Abs(ViewRotation_Delta.Pitch / 45.f * 10.f) : CamCurrLoc.Z
+			e ? FMath::Abs(ViewRotation_Delta_Pitch / 45.f * 10.f) : CamCurrLoc.Z // Camera Move Up/DownWard At Aim Mode
 		)
 	);
 	if (e)
@@ -333,12 +351,11 @@ void AFOBCharacter::Look(const FInputActionValue& Value)
 
 	if (Controller == nullptr) return;
 
-	ViewRotation_Delta = (GetViewRotation() - GetActorRotation()).GetNormalized();
+	float ViewRotation_Delta_Picth = ViewRotation_Delta.Pitch;
+	if (ViewRotation_Delta_Picth > 180.f) ViewRotation_Delta_Picth -= 360.f;
 
-	if (LookAxisUpdated.IsBound()) LookAxisUpdated.Execute(ViewRotation_Delta);
-
-	bool NoMoreUp = (LookAxisVector.Y < 0 && ViewRotation_Delta.Pitch - LookAxisVector.Y > 45.f);
-	bool NoMoreDown = (LookAxisVector.Y > 0 && ViewRotation_Delta.Pitch - LookAxisVector.Y < -45.f);
+	bool NoMoreUp = (LookAxisVector.Y < 0 && ViewRotation_Delta_Picth - LookAxisVector.Y > 45.f);
+	bool NoMoreDown = (LookAxisVector.Y > 0 && ViewRotation_Delta_Picth - LookAxisVector.Y < -45.f);
 
 	AddControllerYawInput(LookAxisVector.X);
 	if (NoMoreUp || NoMoreDown)
@@ -346,11 +363,21 @@ void AFOBCharacter::Look(const FInputActionValue& Value)
 		GetController()->SetControlRotation(FRotator(NoMoreUp ? 45.f : -45.f, GetControlRotation().Yaw, GetControlRotation().Roll));
 		return;
 	}
-	//UE_LOG(LogTemp, Log, TEXT("LookAxisVector : %s"), *LookAxisVector.ToString());
-	//UE_LOG(LogTemp, Log, TEXT("ViewRotation_Delta : %s"), *ViewRotation_Delta.ToString());
-	//UE_LOG(LogTemp, Log, TEXT("NoMoreUp ? %s"), NoMoreUp ? TEXT("True") : TEXT("False"));
 	AddControllerPitchInput(LookAxisVector.Y);
 }
+
+void AFOBCharacter::ClientSendViewRotation_Delta_Implementation()
+{
+	ServerSetViewRotation_Delta(
+		(GetViewRotation() - GetActorRotation()).GetNormalized()
+	);
+}
+
+void AFOBCharacter::ServerSetViewRotation_Delta_Implementation(FRotator NewViewRotation_Delta)
+{
+	ViewRotation_Delta = NewViewRotation_Delta;
+}
+
 
 float AFOBCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {

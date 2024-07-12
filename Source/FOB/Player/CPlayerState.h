@@ -21,6 +21,8 @@ class FOB_API ACPlayerState : public APlayerState
 	float MaxHP;
 	UPROPERTY(Replicated)
 	float fHP;
+	UPROPERTY(Replicated)
+	FRotator ViewRotation_Delta;
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
@@ -44,6 +46,10 @@ public:
 	void SetPlayerAnimStatus(int32 PlayerAnimStatusType, bool e);
 
 	bool GetPlayerAnimStatus(int32 PlayerAnimStatusType);
+
+	UFUNCTION(Server, Reliable)
+	void SetViewRotation_Delta(FRotator NewViewRotation_Delta);
+	FRotator GetViewRotation_Delta() { return ViewRotation_Delta; }
 
 	UFUNCTION()
 	void OnTakeDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser);

@@ -15,19 +15,21 @@ class FOB_API UCPlayerAnimBP : public UAnimInstance
 
 	virtual void NativeInitializeAnimation() override;
 
-	class AFOBCharacter* OwningPlayer;
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
+public:
+
 	UFUNCTION(BlueprintCallable)
 	void UpdateProperties(float DeltaSeconds);
-public:
-	UPROPERTY(Replicated, BlueprintReadOnly)
+
+	UPROPERTY(BlueprintReadOnly)
+	class AFOBCharacter* OwningPlayer;
+
+	UPROPERTY(BlueprintReadOnly)
 	FVector2D MovementVector;
 
-	UPROPERTY(Replicated, BlueprintReadOnly)
+	UPROPERTY(BlueprintReadOnly)
 	FRotator ViewRotation_Delta;
 
-	UFUNCTION(Server, Reliable)
-	void SetViewRotation_Delta(FRotator NewViewRotation_Delta);
 };

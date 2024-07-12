@@ -28,6 +28,7 @@ class AFOBCharacter : public ACharacter, public IPlayerCharacter
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	UCameraComponent* FollowCamera;
 	
+	class UCPlayerAnimBP* AnimInstance;
 
 // Input Settings
 // Input Properties
@@ -54,7 +55,6 @@ private:
 	float CameraRelativeLocationY_TPS;
 	float CameraRelativeLocationY_FPS;
 
-	FRotator ViewRotation_Delta;
 
 // Input Events
 	UFUNCTION(Server, Unreliable)
@@ -74,6 +74,16 @@ private:
 	void Move(const FInputActionValue& Value);
 	void Look(const FInputActionValue& Value);
 
+	UFUNCTION(Server, Reliable)
+	void ServerSetViewRotation_Delta(FRotator NewViewRotation_Delta);
+
+	UFUNCTION(Client, Reliable)
+	void ClientSendViewRotation_Delta();
+public:
+	UPROPERTY(Replicated, Transient, BlueprintReadOnly)
+	FRotator ViewRotation_Delta;
+
+	FRotator GetViewRotation_Delta() { return ViewRotation_Delta; };
 // Input Settings End
 
 
