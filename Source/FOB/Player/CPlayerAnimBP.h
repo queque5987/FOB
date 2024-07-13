@@ -32,4 +32,5 @@ public:
 	UPROPERTY(BlueprintReadOnly)
 	FRotator ViewRotation_Delta;
 
+	void SetViewRotation_Delta(FRotator NewViewRotation_Delta);
 };

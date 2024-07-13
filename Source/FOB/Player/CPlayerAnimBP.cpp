@@ -46,3 +46,8 @@ void UCPlayerAnimBP::UpdateProperties(float DeltaSeconds)
 
 	ViewRotation_Delta = OwningPlayer->GetViewRotation_Delta();
 }
+
+void UCPlayerAnimBP::SetViewRotation_Delta(FRotator NewViewRotation_Delta)
+{
+	ViewRotation_Delta = NewViewRotation_Delta;
+}

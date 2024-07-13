@@ -11,7 +11,6 @@
 #include "Kismet/GameplayStatics.h"
 #include "FOBGameMode.h"
 #include "Components/TextRenderComponent.h"
-#include "CBullet.h"
 #include "PCH.h"
 #include "Net/UnrealNetwork.h"
 #include "Player/CPlayerState.h"
@@ -20,6 +19,8 @@
 #include "InputAction.h"
 #include "Weapon/Weapon.h"
 #include "Player/CPlayerAnimBP.h"
+//Deprecated
+#include "CBullet.h"
 
 DEFINE_LOG_CATEGORY(LogTemplateCharacter);
 
@@ -86,6 +87,8 @@ AFOBCharacter::AFOBCharacter()
 
 	GetMesh()->SetCollisionObjectType(COLLISION_CHANNEL_PLAYER);
 	GetMesh()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+
+	GetMesh()->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones;
 	// Input Asset Load
 	ConstructorHelpers::FObjectFinder<UInputMappingContext> InputMapFinder(TEXT("/Game/Resources/Character/Input/IMC_Default"));
 	ConstructorHelpers::FObjectFinder<UInputAction> JumpActionFinder(TEXT("/Game/Resources/Character/Input/IA_Jump"));
@@ -114,7 +117,6 @@ void AFOBCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
-	AnimInstance = Cast<UCPlayerAnimBP>(GetMesh()->GetAnimInstance());
 }
 
 void AFOBCharacter::Tick(float DeltaSeconds)
@@ -122,7 +124,7 @@ void AFOBCharacter::Tick(float DeltaSeconds)
 	Super::Tick(DeltaSeconds);
 	
 	UpdateHP();
-	
+
 	//TextRenderComponent->SetText(FText::FromString(FString::SanitizeFloat(fHP)));
 	TextRenderComponent->SetText(FText::FromString(ViewRotation_Delta.ToString()));
 	if (C_PlayerState == nullptr) return;
@@ -143,14 +145,14 @@ void AFOBCharacter::Tick(float DeltaSeconds)
 	{
 		ClientSendViewRotation_Delta();
 	}
-	//if (!HasAuthority())
-	//{
-	//	SetViewRotation_Delta(
-	//		(GetViewRotation() - GetActorRotation()).GetNormalized()
-	//	);
-	//}
 
 	SetAimingMode(C_PlayerState->GetPlayerAnimStatus(PLAYER_AIMING), DeltaSeconds);
+
+// Aiming Adjust
+	if (EquippedWeapon_R != nullptr)
+	{
+		AdjustNozzleToAimSpot(DeltaSeconds);
+	}
 }
 
 void AFOBCharacter::PossessedBy(AController* NewController)
@@ -161,6 +163,7 @@ void AFOBCharacter::PossessedBy(AController* NewController)
 	if (C_PlayerState == nullptr) return;
 
 	C_PlayerState->SetupDelegates();
+	C_AnimInstance = Cast<UCPlayerAnimBP>(GetMesh()->GetAnimInstance());
 }
 
 void AFOBCharacter::OnRep_MaxWalkSpeed()
@@ -169,14 +172,98 @@ void AFOBCharacter::OnRep_MaxWalkSpeed()
 	GetCharacterMovement()->MaxWalkSpeed = MaxWalkSpeed;
 }
 
-void AFOBCharacter::OnRep_EquippedWeapon_R_Implementation()
+void AFOBCharacter::OnRep_EquippedWeapon_R()
 {
 	EquippedWeapon_R->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, FName("RightHandSocket"));
 }
 
-void AFOBCharacter::OnRep_EquippedWeapon_L_Implementation()
+void AFOBCharacter::OnRep_EquippedWeapon_L()
 {
 	EquippedWeapon_L->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, FName("LeftHandSocket"));
+}
+
+void AFOBCharacter::AdjustNozzleToAimSpot(float DeltaSeconds)
+{
+	IWeapon* I_Weapon = Cast<IWeapon>(EquippedWeapon_R);
+	if (C_PlayerState == nullptr|| I_Weapon == nullptr) return;
+
+	//LineTrace Properties
+	FHitResult HitResult;
+	FVector CameraLocation = C_PlayerState->GetPlayerAnimStatus(PLAYER_AIMING) ? CameraBoom->GetComponentLocation() : FollowCamera->GetComponentLocation();
+	FVector ViewVector = GetViewRotation().Vector();
+	float MaxTargetDistance = 5000.f;
+	//Weapon Properties
+	FVector NozzleLocation = I_Weapon->GetFireSocketPos();
+	FVector NozzleVector = EquippedWeapon_R->GetActorRotation().Vector();
+	FCollisionQueryParams CollisionQueryParam = FCollisionQueryParams();
+	CollisionQueryParam.AddIgnoredActor(this);
+
+	bool bHit = GetWorld()->LineTraceSingleByChannel(HitResult, CameraLocation, CameraLocation + ViewVector * MaxTargetDistance, ECC_Pawn, CollisionQueryParam);
+	FVector GoalZeroPoint = bHit ? HitResult.Location : CameraLocation + ViewVector * MaxTargetDistance;
+
+	DrawDebugSphere(GetWorld(), bHit ? HitResult.Location : CameraLocation + ViewVector * MaxTargetDistance, 20.f, 32.f, bHit ? FColor::Green : FColor::Red);
+	DrawDebugLine(GetWorld(), CameraLocation, bHit ? HitResult.Location : CameraLocation + ViewVector * MaxTargetDistance, bHit ? FColor::Green : FColor::Red);
+
+	FVector ZeroingPoint(NozzleLocation + NozzleVector * MaxTargetDistance);
+	FVector NozzleGoalVector = (GoalZeroPoint - NozzleLocation).GetSafeNormal();
+	FRotator DeltaRot = NozzleGoalVector.Rotation() - NozzleVector.Rotation();
+
+	DrawDebugSphere(GetWorld(), ZeroingPoint, 20.f, 32.f, FColor::Blue);
+	DrawDebugLine(GetWorld(), NozzleLocation, ZeroingPoint, FColor::Blue);
+
+	FRotator CurrWeight = ViewRotation_Delta_Zeroing;
+
+	CurrWeight.Pitch += (1.f + FMath::Atan(FMath::Abs(DeltaRot.Pitch))) * DeltaRot.Pitch / 2.f * DeltaSeconds;
+	CurrWeight.Yaw += (1.f + FMath::Atan(FMath::Abs(DeltaRot.Yaw))) * DeltaRot.Yaw / 2.f * DeltaSeconds;
+	CurrWeight.Pitch = CurrWeight.Pitch > 0 ? FMath::Min(25.f, CurrWeight.Pitch) : FMath::Max(-25.f, CurrWeight.Pitch);
+	CurrWeight.Yaw = CurrWeight.Yaw > 0 ? FMath::Min(25.f, CurrWeight.Yaw) : FMath::Max(-25.f, CurrWeight.Yaw);
+	CurrWeight.Normalize();
+
+	ServerSetViewRotation_Delta_Zeroing(CurrWeight);
+
+	// V1
+	////UE_LOG(LogTemp, Log, TEXT("AFOBCharacter : AdjustNozzleToAimSpot %s"), *FollowCamera->GetComponentLocation().ToString());
+	//IWeapon* I_Weapon = Cast<IWeapon>(EquippedWeapon_R);
+	//if (C_PlayerState == nullptr || I_Weapon == nullptr) return;
+
+	////LineTrace Properties
+	//FHitResult HitResult;
+	//FVector CameraLocation = C_PlayerState->GetPlayerAnimStatus(PLAYER_AIMING) ? CameraBoom->GetComponentLocation() : FollowCamera->GetComponentLocation();
+	//FVector ViewVector = GetViewRotation().Vector();
+	//float MaxTargetDistance = 5000.f;
+	////Weapon Properties
+	//FVector NozzleLocation = I_Weapon->GetFireSocketPos();
+	//FVector NozzleVector = EquippedWeapon_R->GetActorRotation().Vector();
+	//FCollisionQueryParams CollisionQueryParam = FCollisionQueryParams();
+	//CollisionQueryParam.AddIgnoredActor(this);
+
+	//bool bHit = GetWorld()->LineTraceSingleByChannel(HitResult, CameraLocation, CameraLocation + ViewVector * MaxTargetDistance, ECC_Pawn, CollisionQueryParam);
+	//FVector GoalZeroPoint = bHit ? HitResult.Location : CameraLocation + ViewVector * MaxTargetDistance;
+
+	//DrawDebugSphere(GetWorld(), bHit ? HitResult.Location : CameraLocation + ViewVector * MaxTargetDistance, 20.f, 32.f, bHit ? FColor::Green : FColor::Red);
+	//DrawDebugLine(GetWorld(), CameraLocation, bHit ? HitResult.Location : CameraLocation + ViewVector * MaxTargetDistance, bHit ? FColor::Green : FColor::Red);
+
+	//float X = FVector::Dist2D(NozzleLocation, HitResult.Location);
+	//FVector NozzleToHitLocationVector = (HitResult.Location - NozzleLocation).GetSafeNormal();
+	//float Theta = FMath::Acos(FVector::DotProduct(NozzleVector, NozzleToHitLocationVector));
+	//float R = X / FMath::Cos(Theta);
+
+	//FVector ZeroingPoint(NozzleLocation + NozzleVector * R);
+	//FVector NozzleGoalVector = (GoalZeroPoint - NozzleLocation).GetSafeNormal();
+	//FRotator DeltaRot = NozzleGoalVector.Rotation() - NozzleVector.Rotation();
+
+	//DrawDebugSphere(GetWorld(), ZeroingPoint, 20.f, 32.f, FColor::Blue);
+	//DrawDebugLine(GetWorld(), NozzleLocation, ZeroingPoint, FColor::Blue);
+
+	//FRotator CurrWeight = ViewRotation_Delta_Zeroing;
+
+	//CurrWeight.Pitch += (1 + FMath::Atan(FMath::Abs(DeltaRot.Pitch))) * DeltaRot.Pitch * DeltaSeconds;
+	//CurrWeight.Yaw += (1 + FMath::Atan(FMath::Abs(DeltaRot.Yaw))) * DeltaRot.Yaw * DeltaSeconds;
+	//CurrWeight.Pitch = CurrWeight.Pitch > 0 ? FMath::Min(25.f, CurrWeight.Pitch) : FMath::Max(-25.f, CurrWeight.Pitch);
+	//CurrWeight.Yaw = CurrWeight.Yaw > 0 ? FMath::Min(25.f, CurrWeight.Yaw) : FMath::Max(-25.f, CurrWeight.Yaw);
+	//CurrWeight.Normalize();
+
+	//ServerSetViewRotation_Delta_Zeroing(CurrWeight);
 }
 
 void AFOBCharacter::ServerEquipItem_Implementation(AActor* WeaponToEquip)
@@ -184,8 +271,8 @@ void AFOBCharacter::ServerEquipItem_Implementation(AActor* WeaponToEquip)
 	if (!UKismetSystemLibrary::DoesImplementInterface(WeaponToEquip, UWeapon::StaticClass())) return;
 
 	UE_LOG(LogTemp, Log, TEXT("AFOBCharacter : ServerEquipItem %s"), *WeaponToEquip->GetName());
-
 	EquippedWeapon_R = WeaponToEquip;
+	OnRep_EquippedWeapon_R();
 }
 
 void AFOBCharacter::ServerUnEquipItem_Implementation()
@@ -218,6 +305,7 @@ void AFOBCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLif
 	DOREPLIFETIME(AFOBCharacter, EquippedWeapon_R);
 	DOREPLIFETIME(AFOBCharacter, EquippedWeapon_L);
 	DOREPLIFETIME(AFOBCharacter, ViewRotation_Delta);
+	DOREPLIFETIME(AFOBCharacter, ViewRotation_Delta_Zeroing);
 }
 
 
@@ -225,7 +313,6 @@ void AFOBCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
-	// Add Input Mapping Context
 	if (APlayerController* PlayerController = Cast<APlayerController>(GetController()))
 	{
 		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer()))
@@ -234,7 +321,6 @@ void AFOBCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 		}
 	}
 	
-	// Set up action bindings
 	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent)) {
 		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &ACharacter::Jump);
 		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
@@ -254,17 +340,21 @@ void AFOBCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 
 void AFOBCharacter::LMBTriggered_Implementation()
 {
-	UE_LOG(LogTemp, Log, TEXT("AFOBCharacter - LMBTriggered"));
-
-	AFOBGameMode* GM = Cast<AFOBGameMode>(GetWorld()->GetAuthGameMode());
-	if (GM == nullptr)
+	if (EquippedWeapon_R == nullptr)
 	{
-		UE_LOG(LogTemp, Log, TEXT("Bang"));
+		UE_LOG(LogTemp, Log, TEXT("AFOBCharacter - EquippedWeapon_R Not Found"));
 		return;
 	}
-	FActorSpawnParameters SpawnParam;
-	SpawnParam.Owner = this;
-	GetWorld()->SpawnActor<ACBullet>(ACBullet::StaticClass(), GetActorLocation(), GetBaseAimRotation(), SpawnParam);
+
+	IWeapon* I_Weapon = Cast<IWeapon>(EquippedWeapon_R);
+	if (I_Weapon == nullptr)
+	{
+		UE_LOG(LogTemp, Log, TEXT("AFOBCharacter - EquippedWeapon_R Not Valid Type"));
+		return;
+	}
+
+	I_Weapon->LMBTriggered();
+
 }
 
 void AFOBCharacter::RMBStarted_Implementation()
@@ -310,8 +400,10 @@ void AFOBCharacter::SetAimingMode_Implementation(bool e, float DeltaSeconds)
 			e ? FMath::Abs(ViewRotation_Delta_Pitch / 45.f * 10.f) : CamCurrLoc.Z // Camera Move Up/DownWard At Aim Mode
 		)
 	);
+
 	if (e)
 	{
+		if (CameraBoom->TargetArmLength - CameraBoomLength_FPS > 10.f) return;
 		GetMesh()->HideBoneByName(FName("Head"), EPhysBodyOp::PBO_None);
 	}
 	else
@@ -366,16 +458,31 @@ void AFOBCharacter::Look(const FInputActionValue& Value)
 	AddControllerPitchInput(LookAxisVector.Y);
 }
 
+void AFOBCharacter::ServerSetViewRotation_Delta_Zeroing_Implementation(FRotator NewViewRotation_Delta)
+{
+	ViewRotation_Delta_Zeroing = NewViewRotation_Delta;
+}
+
+void AFOBCharacter::OnRep_ViewRotation_Delta()
+{
+	//if (C_AnimInstance == nullptr) return;
+	//C_AnimInstance->SetViewRotation_Delta(ViewRotation_Delta);
+	//UE_LOG(LogTemp, Log, TEXT("AFOBCharacter : OnRep_ViewRotation_Delta On %s\t%s"), HasAuthority() ? TEXT("Server") : TEXT("Client"), *ViewRotation_Delta.ToString());
+}
+
 void AFOBCharacter::ClientSendViewRotation_Delta_Implementation()
 {
 	ServerSetViewRotation_Delta(
-		(GetViewRotation() - GetActorRotation()).GetNormalized()
+		((GetViewRotation() - GetActorRotation()).GetNormalized() + ViewRotation_Delta_Zeroing)
 	);
 }
 
 void AFOBCharacter::ServerSetViewRotation_Delta_Implementation(FRotator NewViewRotation_Delta)
 {
+	//FRotator ViewRotation_Delta_Weight = FRotator(10.f, 0.f, 0.f);
+	//ViewRotation_Delta = (NewViewRotation_Delta + ViewRotation_Delta_Zeroing).GetNormalized();
 	ViewRotation_Delta = NewViewRotation_Delta;
+	OnRep_ViewRotation_Delta();
 }
 
 

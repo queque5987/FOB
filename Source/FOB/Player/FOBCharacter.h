@@ -28,7 +28,7 @@ class AFOBCharacter : public ACharacter, public IPlayerCharacter
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	UCameraComponent* FollowCamera;
 	
-	class UCPlayerAnimBP* AnimInstance;
+	class UCPlayerAnimBP* C_AnimInstance;
 
 // Input Settings
 // Input Properties
@@ -54,10 +54,16 @@ private:
 	float CameraBoomLength_FPS;
 	float CameraRelativeLocationY_TPS;
 	float CameraRelativeLocationY_FPS;
+public:
+	UPROPERTY(Replicated, Transient, BlueprintReadOnly, ReplicatedUsing = OnRep_ViewRotation_Delta)
+	FRotator ViewRotation_Delta;
 
+	UPROPERTY(Replicated, Transient, BlueprintReadOnly, ReplicatedUsing = OnRep_ViewRotation_Delta)
+	FRotator ViewRotation_Delta_Zeroing;
 
+private:
 // Input Events
-	UFUNCTION(Server, Unreliable)
+	UFUNCTION(Server, Reliable)
 	void LMBTriggered();
 	UFUNCTION(Server, Unreliable)
 	void RMBStarted();
@@ -79,10 +85,14 @@ private:
 
 	UFUNCTION(Client, Reliable)
 	void ClientSendViewRotation_Delta();
-public:
-	UPROPERTY(Replicated, Transient, BlueprintReadOnly)
-	FRotator ViewRotation_Delta;
 
+	UFUNCTION(Server, Reliable)
+	void ServerSetViewRotation_Delta_Zeroing(FRotator NewViewRotation_Delta);
+
+	UFUNCTION()
+	void OnRep_ViewRotation_Delta();
+public:
+	
 	FRotator GetViewRotation_Delta() { return ViewRotation_Delta; };
 // Input Settings End
 
@@ -120,12 +130,20 @@ public:
 	virtual void ServerUnEquipItem() override;
 
 private:
-	UFUNCTION(NetMulticast, Reliable)
+	UFUNCTION()
 	void OnRep_EquippedWeapon_R();
-	UFUNCTION(NetMulticast, Reliable)
+	UFUNCTION()
 	void OnRep_EquippedWeapon_L();
 
 // * EquipWeapon Status End			//
+
+// Weapon Aiming
+
+private:
+	void AdjustNozzleToAimSpot(float DeltaSeconds);
+
+
+private:
 	class ACPlayerState* C_PlayerState;
 
 	UPROPERTY(Replicated, Transient, ReplicatedUsing = OnRep_MaxWalkSpeed)

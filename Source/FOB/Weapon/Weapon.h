@@ -16,9 +16,13 @@ class FOB_API IWeapon
 {
 	GENERATED_BODY()
 
+protected:
+	virtual void GetFireSocketPos(FTransform& OutTransform) {}
 public:
-	
+
+	virtual FVector GetFireSocketPos() { return FVector(); }
 	virtual void Equip(FName SocketName) {}
 	virtual void UnEquip() {}
 	
+	virtual void LMBTriggered() {}
 };

@@ -12,13 +12,14 @@ class FOB_API ACBullet : public AActor
 	GENERATED_BODY()
 	
 public:	
-	// Sets default values for this actor's properties
 	ACBullet();
 
 protected:
 
 	TSubclassOf<class UDamageType> DamageType;
+	UPROPERTY(EditAnywhere)
 	class UStaticMeshComponent* StaticMeshComponent;
+	UPROPERTY(EditAnywhere)
 	class USphereComponent* Collider;
 
 	virtual void BeginPlay() override;
@@ -30,7 +31,7 @@ protected:
 	void CheckOverlapingActor();
 
 public:	
-	// Called every frame
 	virtual void Tick(float DeltaTime) override;
-
+	UFUNCTION(NetMulticast, Reliable)
+	void SetStaticMesh(class UStaticMesh* NewStaticMesh);
 };

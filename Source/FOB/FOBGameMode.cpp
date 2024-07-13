@@ -24,6 +24,6 @@ AFOBGameMode::AFOBGameMode()
 
 void AFOBGameMode::SpawnPotato(FVector SpawnLocation, FRotator SpawnRotation)
 {
-	UE_LOG(LogTemp, Log, TEXT("Spawn Location : %s"), *SpawnLocation.ToString());
+	UE_LOG(LogTemp, Log, TEXT("Spawn Location On %s : %s"), HasAuthority() ? TEXT("Server") : TEXT("Client"), *SpawnLocation.ToString());
 	GetWorld()->SpawnActor<ACBullet>(ACBullet::StaticClass(), SpawnLocation, SpawnRotation);
 }

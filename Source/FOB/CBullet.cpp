@@ -12,6 +12,7 @@
 ACBullet::ACBullet()
 {
 	PrimaryActorTick.bCanEverTick = true;
+	bReplicates = true;
 
 	StaticMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>("StaticMeshComponent");
 	Collider = CreateDefaultSubobject<USphereComponent>("Collider");
@@ -22,14 +23,14 @@ ACBullet::ACBullet()
 	Collider->SetSphereRadius(30.f);
 
 	fClock = 0.f;
-	Acc = 500.f;
-	bReplicates = true;
+	Acc = 1500.f;
 	DamageType = UDamageType::StaticClass();
 
-	StaticMeshComponent->SetRelativeScale3D(FVector(10.f, 10.f, 10.f));
+	StaticMeshComponent->SetRelativeScale3D(FVector(3.f, 3.f, 3.f));
+	StaticMeshComponent->SetRelativeLocation(FVector(20.f, 0.f, 4.f));
 
-	SetRootComponent(StaticMeshComponent);
-	Collider->SetupAttachment(StaticMeshComponent);
+	SetRootComponent(Collider);
+	StaticMeshComponent->SetupAttachment(Collider);
 }
 
 void ACBullet::BeginPlay()
@@ -64,7 +65,13 @@ void ACBullet::CheckOverlapingActor()
 
 	FDamageEvent DamageEvent = FDamageEvent();
 
-	if (!bHit) return;
+	if (!bHit)
+	{
+		//UE_LOG(LogTemp, Log, TEXT("No Hit Actor : %s"), *GetActorLocation().ToString());
+		return;
+	}
+
+	DrawDebugSphere(GetWorld(), GetActorLocation(), 30.f, 32.f, bHit ? FColor::Green : FColor::Red, false, 0.2f);
 
 	for (const FHitResult HR : HitResults)
 	{
@@ -84,10 +91,8 @@ void ACBullet::CheckOverlapingActor()
 		}
 
 		Destroy();
+		break;
 	}
-
-	//DrawDebugSphere(GetWorld(), GetActorLocation(), 30.f, 32.f, bHit? FColor::Green : FColor::Red, false, 0.2f);
-
 }
 
 void ACBullet::Tick(float DeltaTime)
@@ -101,6 +106,11 @@ void ACBullet::Tick(float DeltaTime)
 		FVector NextTickLocation = GetActorLocation() + GetActorForwardVector() * (Acc * DeltaTime);
 		SetActorLocation(NextTickLocation);
 	}
-
 	CheckOverlapingActor();
+}
+
+void ACBullet::SetStaticMesh_Implementation(UStaticMesh* NewStaticMesh)
+{
+	StaticMeshComponent->SetStaticMesh(NewStaticMesh);
+	//UE_LOG(LogTemp, Log, TEXT("UCWeaponComponent - Fire On %s : %s"), HasAuthority() ? TEXT("Server") : TEXT("Client"), *NewStaticMesh->GetName());
 }
