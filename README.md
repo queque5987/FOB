@@ -85,3 +85,15 @@ Character 클래스 Tick에서 ViewRoatation을 주기적으로 업데이트하�
 Server에서 캐릭터의 ViewRotation을 구할 수 없으므로, Client에서 ViewRotation을 구한 뒤 Server에서 멤버변수에 할당하는 방식으로 구현 -->
 
 AnimInstance는 Character에서 ViewRotation을 Get하여 AimOffset에 전달
+
+#### 총기 액터 Attach 이후 Socket Transform이 동기화되지 않는 현상
+
+Animation은 ViewRotation에 따라서 동기화되나, 총기 Actor에서 총알 발포 시 ViewRotation이 동기화 되지 않은 Idle 상태의 Socket Transform으로 계산됨 -->
+
+클라이언트에서 서버로 Transform을 전송하여 총알을 Spawn하려 하였으나, 무거워질 것을 염려하여 포기 -->
+
+Animation은 동기화되고 있었으나, SkeletalMesh의 Bone Transoform이 서버에 동기화되지 않고 있음을 확인
+
+### 해결
+
+GetMesh()->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones; 단 한 줄 추가하여 해결
