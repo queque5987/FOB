@@ -97,3 +97,20 @@ Animation은 동기화되고 있었으나, SkeletalMesh의 Bone Transoform이 �
 ### 해결
 
 GetMesh()->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones; 단 한 줄 추가하여 해결
+
+
+## 5. 총기 영점 조정
+
+[어긋나는 스크린샷]
+
+조준점이 향하는 방향과 AimOffset이 (0, 0)일 때 총열이 향하는 방향에 차이를 줄이고자 하였음 -->
+
+CameraComponent로부터 정면으로 LineTrace를 실행하여 충돌하는 액터의 좌표를 감지함(없을 경우 최대 사거리 좌표) -->
+
+위에서 구한 좌표를 GoalZeroPoint라고 했을 때 총열의 방향 벡터와 총열과 GoalZeroPoint 사이의 방향 벡터를 구함 -->
+
+두 방향 벡터 사이의 FRotator를 AimOffset에 적용되는 ViewRotation_Delta에 더하여 해결 -->
+
+가중치에 아크탄젠트를 곱하여 차이가 클수록(영점이 더 엇나갈수록) 변화값이 커지도록 연출
+
+[에임 따라가는 gif]
