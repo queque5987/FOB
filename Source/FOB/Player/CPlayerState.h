@@ -6,9 +6,8 @@
 #include "GameFramework/PlayerState.h"
 #include "CPlayerState.generated.h"
 
-/**
- * 
- */
+//DECLARE_DELEGATE_OneParam(FPlayerAnimStatusUpdated, int32);
+
 UCLASS()
 class FOB_API ACPlayerState : public APlayerState
 {
@@ -21,13 +20,15 @@ class FOB_API ACPlayerState : public APlayerState
 	float MaxHP;
 	UPROPERTY(Replicated)
 	float fHP;
-	UPROPERTY(Replicated)
-	FRotator ViewRotation_Delta;
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-
+	UPROPERTY(Replicated, ReplicatedUsing = OnRep_PlayerAnimStatus)
 	int32 PlayerAnimStatus;
+	UFUNCTION()
+	void OnRep_PlayerAnimStatus();
 public:
+	//FPlayerAnimStatusUpdated PlayerAnimStatusUpdated;
+
 	UFUNCTION(NetMulticast, Reliable)
 	void SetupDelegates();
 
@@ -46,10 +47,6 @@ public:
 	void SetPlayerAnimStatus(int32 PlayerAnimStatusType, bool e);
 
 	bool GetPlayerAnimStatus(int32 PlayerAnimStatusType);
-
-	UFUNCTION(Server, Reliable)
-	void SetViewRotation_Delta(FRotator NewViewRotation_Delta);
-	FRotator GetViewRotation_Delta() { return ViewRotation_Delta; }
 
 	UFUNCTION()
 	void OnTakeDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser);

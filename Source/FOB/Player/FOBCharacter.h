@@ -15,7 +15,7 @@ class UInputAction;
 struct FInputActionValue;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
-DECLARE_DELEGATE_OneParam(FLookAxisUpdated, FRotator);
+DECLARE_DELEGATE_OneParam(FPlayerAnimStatusUpdated, bool);
 
 UCLASS(config=Game)
 class AFOBCharacter : public ACharacter, public IPlayerCharacter
@@ -49,6 +49,8 @@ private:
 	UInputAction* LMBAction;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* RMBAction;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* CrouchAction;
 
 	float CameraBoomLength_TPS;
 	float CameraBoomLength_FPS;
@@ -74,6 +76,11 @@ private:
 	UFUNCTION(Server, Unreliable)
 	void ShiftCompleted();
 
+	UFUNCTION(Server, Unreliable)
+	void CrouchTriggered();
+	UFUNCTION(Server, Unreliable)
+	void CrouchCompleted();
+
 	UFUNCTION(Client, Reliable)
 	void SetAimingMode(bool e, float DeltaSeconds);
 
@@ -91,8 +98,12 @@ private:
 
 	UFUNCTION()
 	void OnRep_ViewRotation_Delta();
+
+	UPROPERTY(Replicated)
+	bool bCrouching;
+
 public:
-	
+	bool GetbCrouching() { return bCrouching; }
 	FRotator GetViewRotation_Delta() { return ViewRotation_Delta; };
 // Input Settings End
 
@@ -100,7 +111,7 @@ public:
 public:
 	AFOBCharacter();
 
-	FLookAxisUpdated LookAxisUpdated;
+	FPlayerAnimStatusUpdated PlayerAnimStatusUpdated;
 
 	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, AActor* DamageCauser) override;
 			

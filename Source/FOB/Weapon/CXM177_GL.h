@@ -3,10 +3,10 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "Weapon/Weapon.h"
-#include "CXM177.generated.h"
+#include "CXM177_GL.generated.h"
 
 UCLASS()
-class FOB_API ACXM177 : public AActor, public IWeapon
+class FOB_API ACXM177_GL : public AActor, public IWeapon
 {
 	GENERATED_BODY()
 
@@ -16,22 +16,26 @@ class FOB_API ACXM177 : public AActor, public IWeapon
 	class UStaticMeshComponent* StaticMeshComponent;
 	UPROPERTY(EditAnywhere)
 	class UStaticMeshComponent* StaticMeshComponent_Magazine;
+	UPROPERTY(EditAnywhere)
+	class UStaticMeshComponent* StaticMeshComponent_GranadeLauncher;
 
 	UPROPERTY(EditAnywhere)
 	class UStaticMesh* BulletStaticMesh;
-
+	UPROPERTY(EditAnywhere)
+	class UStaticMesh* GranadeStaticMesh;
 public:	
-	ACXM177();
+	ACXM177_GL();
 
 protected:
 	virtual void BeginPlay() override;
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-public:	
+public:
 	virtual FVector GetFireSocketPos() override;
 	virtual void Tick(float DeltaTime) override;
 
 	UFUNCTION(NetMulticast, Reliable)
 	virtual void LMBTriggered() override;
+	
 };

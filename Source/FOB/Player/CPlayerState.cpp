@@ -21,7 +21,20 @@ void ACPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLif
 
 	DOREPLIFETIME(ACPlayerState, fHP);
 	DOREPLIFETIME(ACPlayerState, MaxHP);
-	DOREPLIFETIME(ACPlayerState, ViewRotation_Delta);
+	DOREPLIFETIME(ACPlayerState, PlayerAnimStatus);
+}
+
+void ACPlayerState::OnRep_PlayerAnimStatus()
+{
+	UE_LOG(LogTemp, Log, TEXT("ACPlayerState - OnRep_PlayerAnimStatus %d"), PlayerAnimStatus);
+	//if (PlayerAnimStatusUpdated.IsBound())
+	//{
+	//	PlayerAnimStatusUpdated.Execute(PlayerAnimStatus);
+	//}
+	//else
+	//{
+	//	UE_LOG(LogTemp, Log, TEXT("ACPlayerState - OnRep_PlayerAnimStatus Execute Failed"));
+	//}
 }
 
 void ACPlayerState::SetMaxHP_Implementation(float NewMaxHP)
@@ -66,11 +79,6 @@ void ACPlayerState::SetPlayerAnimStatus_Implementation(int32 PlayerAnimStatusTyp
 bool ACPlayerState::GetPlayerAnimStatus(int32 PlayerAnimStatusType)
 {
 	return (PlayerAnimStatus & PlayerAnimStatusType);
-}
-
-void ACPlayerState::SetViewRotation_Delta_Implementation(FRotator NewViewRotation_Delta)
-{
-	ViewRotation_Delta = NewViewRotation_Delta;
 }
 
 void ACPlayerState::OnTakeDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser)

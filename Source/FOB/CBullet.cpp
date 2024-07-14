@@ -23,7 +23,7 @@ ACBullet::ACBullet()
 	Collider->SetSphereRadius(30.f);
 
 	fClock = 0.f;
-	Acc = 1500.f;
+	Acc = 5000.f;
 	DamageType = UDamageType::StaticClass();
 
 	StaticMeshComponent->SetRelativeScale3D(FVector(3.f, 3.f, 3.f));
@@ -71,7 +71,7 @@ void ACBullet::CheckOverlapingActor()
 		return;
 	}
 
-	DrawDebugSphere(GetWorld(), GetActorLocation(), 30.f, 32.f, bHit ? FColor::Green : FColor::Red, false, 0.2f);
+	DrawDebugSphere(GetWorld(), GetActorLocation(), 30.f, 32.f, bHit ? FColor::Green : FColor::Red, false, 0.6f);
 
 	for (const FHitResult HR : HitResults)
 	{
@@ -107,6 +107,7 @@ void ACBullet::Tick(float DeltaTime)
 		SetActorLocation(NextTickLocation);
 	}
 	CheckOverlapingActor();
+	DrawDebugSphere(GetWorld(), GetActorLocation(), 2.f, 32.f, FColor::Cyan, false, 0.2f);
 }
 
 void ACBullet::SetStaticMesh_Implementation(UStaticMesh* NewStaticMesh)

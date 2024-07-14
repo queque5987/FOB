@@ -6,9 +6,6 @@
 #include "GameFramework/GameStateBase.h"
 #include "CGameState.generated.h"
 
-/**
- * 
- */
 UCLASS()
 class FOB_API ACGameState : public AGameStateBase
 {

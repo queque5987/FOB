@@ -80,7 +80,7 @@ AFOBCharacter::AFOBCharacter()
 	if (SKFinder.Succeeded())
 	{
 		GetMesh()->SetSkeletalMesh(SKFinder.Object);
-		GetMesh()->SetRelativeLocation(FVector(0.f, 0.f, -87.f));
+		GetMesh()->SetRelativeLocation(FVector(0.f, 0.f, -96.f));
 		GetMesh()->SetRelativeRotation(FRotator(0.f, -90.f, 0.f));
 	}
 
@@ -97,6 +97,7 @@ AFOBCharacter::AFOBCharacter()
 	ConstructorHelpers::FObjectFinder<UInputAction> ShiftActionFinder(TEXT("/Game/Resources/Character/Input/IA_Shift"));
 	ConstructorHelpers::FObjectFinder<UInputAction> LMBActionFinder(TEXT("/Game/Resources/Character/Input/IA_LMB"));
 	ConstructorHelpers::FObjectFinder<UInputAction> RMBActionFinder(TEXT("/Game/Resources/Character/Input/IA_RMB"));
+	ConstructorHelpers::FObjectFinder<UInputAction> CrouchActionFinder(TEXT("/Game/Resources/Character/Input/IA_Crouch"));
 
 	if (InputMapFinder.Succeeded()) DefaultMappingContext = InputMapFinder.Object;
 	if (JumpActionFinder.Succeeded()) JumpAction = JumpActionFinder.Object;
@@ -106,6 +107,7 @@ AFOBCharacter::AFOBCharacter()
 	if (ShiftActionFinder.Succeeded()) ShiftAction = ShiftActionFinder.Object;
 	if (LMBActionFinder.Succeeded()) LMBAction = LMBActionFinder.Object;
 	if (RMBActionFinder.Succeeded()) RMBAction = RMBActionFinder.Object;
+	if (CrouchActionFinder.Succeeded()) CrouchAction = CrouchActionFinder.Object;
 
 	// AnimInstance Load
 
@@ -149,7 +151,7 @@ void AFOBCharacter::Tick(float DeltaSeconds)
 	SetAimingMode(C_PlayerState->GetPlayerAnimStatus(PLAYER_AIMING), DeltaSeconds);
 
 // Aiming Adjust
-	if (EquippedWeapon_R != nullptr)
+	if (EquippedWeapon_R != nullptr && C_PlayerState->GetPlayerAnimStatus(PLAYER_AIMING))
 	{
 		AdjustNozzleToAimSpot(DeltaSeconds);
 	}
@@ -161,9 +163,11 @@ void AFOBCharacter::PossessedBy(AController* NewController)
 
 	C_PlayerState = Cast<ACPlayerState>(GetPlayerState());
 	if (C_PlayerState == nullptr) return;
-
 	C_PlayerState->SetupDelegates();
+
 	C_AnimInstance = Cast<UCPlayerAnimBP>(GetMesh()->GetAnimInstance());
+	if (C_AnimInstance == nullptr) return;
+	C_AnimInstance->SetupDelegates();
 }
 
 void AFOBCharacter::OnRep_MaxWalkSpeed()
@@ -189,7 +193,18 @@ void AFOBCharacter::AdjustNozzleToAimSpot(float DeltaSeconds)
 
 	//LineTrace Properties
 	FHitResult HitResult;
-	FVector CameraLocation = C_PlayerState->GetPlayerAnimStatus(PLAYER_AIMING) ? CameraBoom->GetComponentLocation() : FollowCamera->GetComponentLocation();
+	//FVector CameraLocation = C_PlayerState->GetPlayerAnimStatus(PLAYER_AIMING) ? CameraBoom->GetComponentLocation() : FollowCamera->GetComponentLocation();
+	FVector CameraLocation = (
+		C_PlayerState->GetPlayerAnimStatus(PLAYER_AIMING) ?
+			//Aming
+			CameraBoom->GetComponentLocation() :
+			//NotAiming
+			FollowCamera->GetComponentLocation()
+		) + (
+			bCrouching ? 
+			FVector(0.f, 0.f, -50.f) :
+			FVector(0.f, 0.f, 0.f)
+			);
 	FVector ViewVector = GetViewRotation().Vector();
 	float MaxTargetDistance = 5000.f;
 	//Weapon Properties
@@ -201,69 +216,25 @@ void AFOBCharacter::AdjustNozzleToAimSpot(float DeltaSeconds)
 	bool bHit = GetWorld()->LineTraceSingleByChannel(HitResult, CameraLocation, CameraLocation + ViewVector * MaxTargetDistance, ECC_Pawn, CollisionQueryParam);
 	FVector GoalZeroPoint = bHit ? HitResult.Location : CameraLocation + ViewVector * MaxTargetDistance;
 
-	DrawDebugSphere(GetWorld(), bHit ? HitResult.Location : CameraLocation + ViewVector * MaxTargetDistance, 20.f, 32.f, bHit ? FColor::Green : FColor::Red);
-	DrawDebugLine(GetWorld(), CameraLocation, bHit ? HitResult.Location : CameraLocation + ViewVector * MaxTargetDistance, bHit ? FColor::Green : FColor::Red);
+	//DrawDebugSphere(GetWorld(), bHit ? HitResult.Location : CameraLocation + ViewVector * MaxTargetDistance, 20.f, 32.f, bHit ? FColor::Green : FColor::Red);
+	//DrawDebugLine(GetWorld(), CameraLocation, bHit ? HitResult.Location : CameraLocation + ViewVector * MaxTargetDistance, bHit ? FColor::Green : FColor::Red);
 
 	FVector ZeroingPoint(NozzleLocation + NozzleVector * MaxTargetDistance);
 	FVector NozzleGoalVector = (GoalZeroPoint - NozzleLocation).GetSafeNormal();
 	FRotator DeltaRot = NozzleGoalVector.Rotation() - NozzleVector.Rotation();
 
-	DrawDebugSphere(GetWorld(), ZeroingPoint, 20.f, 32.f, FColor::Blue);
-	DrawDebugLine(GetWorld(), NozzleLocation, ZeroingPoint, FColor::Blue);
+	//DrawDebugSphere(GetWorld(), ZeroingPoint, 20.f, 32.f, FColor::Blue);
+	//DrawDebugLine(GetWorld(), NozzleLocation, ZeroingPoint, FColor::Blue);
 
 	FRotator CurrWeight = ViewRotation_Delta_Zeroing;
 
-	CurrWeight.Pitch += (1.f + FMath::Atan(FMath::Abs(DeltaRot.Pitch))) * DeltaRot.Pitch / 2.f * DeltaSeconds;
-	CurrWeight.Yaw += (1.f + FMath::Atan(FMath::Abs(DeltaRot.Yaw))) * DeltaRot.Yaw / 2.f * DeltaSeconds;
+	CurrWeight.Pitch += (3.f + FMath::Atan(FMath::Abs(DeltaRot.Pitch))) * DeltaRot.Pitch / 1.2f * DeltaSeconds;
+	CurrWeight.Yaw += (10.f + FMath::Atan(FMath::Abs(DeltaRot.Yaw))) * DeltaRot.Yaw / 1.2f * DeltaSeconds;
 	CurrWeight.Pitch = CurrWeight.Pitch > 0 ? FMath::Min(25.f, CurrWeight.Pitch) : FMath::Max(-25.f, CurrWeight.Pitch);
 	CurrWeight.Yaw = CurrWeight.Yaw > 0 ? FMath::Min(25.f, CurrWeight.Yaw) : FMath::Max(-25.f, CurrWeight.Yaw);
 	CurrWeight.Normalize();
 
 	ServerSetViewRotation_Delta_Zeroing(CurrWeight);
-
-	// V1
-	////UE_LOG(LogTemp, Log, TEXT("AFOBCharacter : AdjustNozzleToAimSpot %s"), *FollowCamera->GetComponentLocation().ToString());
-	//IWeapon* I_Weapon = Cast<IWeapon>(EquippedWeapon_R);
-	//if (C_PlayerState == nullptr || I_Weapon == nullptr) return;
-
-	////LineTrace Properties
-	//FHitResult HitResult;
-	//FVector CameraLocation = C_PlayerState->GetPlayerAnimStatus(PLAYER_AIMING) ? CameraBoom->GetComponentLocation() : FollowCamera->GetComponentLocation();
-	//FVector ViewVector = GetViewRotation().Vector();
-	//float MaxTargetDistance = 5000.f;
-	////Weapon Properties
-	//FVector NozzleLocation = I_Weapon->GetFireSocketPos();
-	//FVector NozzleVector = EquippedWeapon_R->GetActorRotation().Vector();
-	//FCollisionQueryParams CollisionQueryParam = FCollisionQueryParams();
-	//CollisionQueryParam.AddIgnoredActor(this);
-
-	//bool bHit = GetWorld()->LineTraceSingleByChannel(HitResult, CameraLocation, CameraLocation + ViewVector * MaxTargetDistance, ECC_Pawn, CollisionQueryParam);
-	//FVector GoalZeroPoint = bHit ? HitResult.Location : CameraLocation + ViewVector * MaxTargetDistance;
-
-	//DrawDebugSphere(GetWorld(), bHit ? HitResult.Location : CameraLocation + ViewVector * MaxTargetDistance, 20.f, 32.f, bHit ? FColor::Green : FColor::Red);
-	//DrawDebugLine(GetWorld(), CameraLocation, bHit ? HitResult.Location : CameraLocation + ViewVector * MaxTargetDistance, bHit ? FColor::Green : FColor::Red);
-
-	//float X = FVector::Dist2D(NozzleLocation, HitResult.Location);
-	//FVector NozzleToHitLocationVector = (HitResult.Location - NozzleLocation).GetSafeNormal();
-	//float Theta = FMath::Acos(FVector::DotProduct(NozzleVector, NozzleToHitLocationVector));
-	//float R = X / FMath::Cos(Theta);
-
-	//FVector ZeroingPoint(NozzleLocation + NozzleVector * R);
-	//FVector NozzleGoalVector = (GoalZeroPoint - NozzleLocation).GetSafeNormal();
-	//FRotator DeltaRot = NozzleGoalVector.Rotation() - NozzleVector.Rotation();
-
-	//DrawDebugSphere(GetWorld(), ZeroingPoint, 20.f, 32.f, FColor::Blue);
-	//DrawDebugLine(GetWorld(), NozzleLocation, ZeroingPoint, FColor::Blue);
-
-	//FRotator CurrWeight = ViewRotation_Delta_Zeroing;
-
-	//CurrWeight.Pitch += (1 + FMath::Atan(FMath::Abs(DeltaRot.Pitch))) * DeltaRot.Pitch * DeltaSeconds;
-	//CurrWeight.Yaw += (1 + FMath::Atan(FMath::Abs(DeltaRot.Yaw))) * DeltaRot.Yaw * DeltaSeconds;
-	//CurrWeight.Pitch = CurrWeight.Pitch > 0 ? FMath::Min(25.f, CurrWeight.Pitch) : FMath::Max(-25.f, CurrWeight.Pitch);
-	//CurrWeight.Yaw = CurrWeight.Yaw > 0 ? FMath::Min(25.f, CurrWeight.Yaw) : FMath::Max(-25.f, CurrWeight.Yaw);
-	//CurrWeight.Normalize();
-
-	//ServerSetViewRotation_Delta_Zeroing(CurrWeight);
 }
 
 void AFOBCharacter::ServerEquipItem_Implementation(AActor* WeaponToEquip)
@@ -306,6 +277,7 @@ void AFOBCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLif
 	DOREPLIFETIME(AFOBCharacter, EquippedWeapon_L);
 	DOREPLIFETIME(AFOBCharacter, ViewRotation_Delta);
 	DOREPLIFETIME(AFOBCharacter, ViewRotation_Delta_Zeroing);
+	DOREPLIFETIME(AFOBCharacter, bCrouching);
 }
 
 
@@ -327,10 +299,12 @@ void AFOBCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &AFOBCharacter::Move);
 		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &AFOBCharacter::Look);
 		EnhancedInputComponent->BindAction(LMBAction, ETriggerEvent::Started, this, &AFOBCharacter::LMBTriggered);
-		EnhancedInputComponent->BindAction(ShiftAction, ETriggerEvent::Triggered, this, &AFOBCharacter::ShiftTriggered);
+		EnhancedInputComponent->BindAction(ShiftAction, ETriggerEvent::Ongoing, this, &AFOBCharacter::ShiftTriggered);
 		EnhancedInputComponent->BindAction(ShiftAction, ETriggerEvent::Completed, this, &AFOBCharacter::ShiftCompleted);
 		EnhancedInputComponent->BindAction(RMBAction, ETriggerEvent::Started, this, &AFOBCharacter::RMBStarted);
 		EnhancedInputComponent->BindAction(RMBAction, ETriggerEvent::Completed, this, &AFOBCharacter::RMBCompleted);
+		EnhancedInputComponent->BindAction(CrouchAction, ETriggerEvent::Started, this, &AFOBCharacter::CrouchTriggered);
+		EnhancedInputComponent->BindAction(CrouchAction, ETriggerEvent::Completed, this, &AFOBCharacter::CrouchCompleted);
 	}
 	else
 	{
@@ -359,6 +333,8 @@ void AFOBCharacter::LMBTriggered_Implementation()
 
 void AFOBCharacter::RMBStarted_Implementation()
 {
+	if (C_PlayerState == nullptr) return;
+	C_PlayerState->SetPlayerAnimStatus(PLAYER_DASHING, false);
 	C_PlayerState->SetPlayerAnimStatus(PLAYER_AIMING, true);
 
 	UE_LOG(LogTemp, Log, TEXT("AFOBCharacter - RMBTriggered"));
@@ -366,6 +342,7 @@ void AFOBCharacter::RMBStarted_Implementation()
 
 void AFOBCharacter::RMBCompleted_Implementation()
 {
+	if (C_PlayerState == nullptr) return;
 	C_PlayerState->SetPlayerAnimStatus(PLAYER_AIMING, false);
 
 	UE_LOG(LogTemp, Log, TEXT("AFOBCharacter - RMBCompleted"));
@@ -373,12 +350,18 @@ void AFOBCharacter::RMBCompleted_Implementation()
 
 void AFOBCharacter::ShiftTriggered_Implementation()
 {
+	if (C_PlayerState == nullptr) return;
+	if (C_PlayerState->GetPlayerAnimStatus(PLAYER_AIMING)) return;
+
 	C_PlayerState->SetPlayerAnimStatus(PLAYER_DASHING, true);
 	UE_LOG(LogTemp, Log, TEXT("ShiftOnGoing : PLAYER_DASHING Set %s"), C_PlayerState->GetPlayerAnimStatus(PLAYER_DASHING) ? TEXT("True") : TEXT("False"));
 }
 
 void AFOBCharacter::ShiftCompleted_Implementation()
 {
+	if (C_PlayerState == nullptr) return;
+	if (C_PlayerState->GetPlayerAnimStatus(PLAYER_AIMING)) return;
+
 	C_PlayerState->SetPlayerAnimStatus(PLAYER_DASHING, false);
 	UE_LOG(LogTemp, Log, TEXT("ShiftCompleted : PLAYER_DASHING Set %s"), C_PlayerState->GetPlayerAnimStatus(PLAYER_DASHING) ? TEXT("True") : TEXT("False"));
 }
@@ -390,16 +373,34 @@ void AFOBCharacter::SetAimingMode_Implementation(bool e, float DeltaSeconds)
 	if (ViewRotation_Delta_Pitch > 180.f) ViewRotation_Delta_Pitch -= 360.f;
 	CameraBoom->TargetArmLength = FMath::Lerp(CameraBoom->TargetArmLength, e ? CameraBoomLength_FPS : CameraBoomLength_TPS, 0.5f);
 
+	//bCrouching ? -20.f : 0.f
 	FollowCamera->SetRelativeLocation(
 		FVector(
-			e ? ( // Camera Move Forward/Backward At Aim Mode
+			// X = Camera Move Forward/Backward At Aim Mode
+			e ? (
 				ViewRotation_Delta_Pitch > 0 ?
 				ViewRotation_Delta_Pitch / 45.f * -15.f : ViewRotation_Delta_Pitch / 45.f * -30.f
 				) : CamCurrLoc.X,
+			// Y = Camera Move Horizontally
 			FMath::Lerp(CamCurrLoc.Y, e ? CameraRelativeLocationY_FPS : CameraRelativeLocationY_TPS, 0.5f),
-			e ? FMath::Abs(ViewRotation_Delta_Pitch / 45.f * 10.f) : CamCurrLoc.Z // Camera Move Up/DownWard At Aim Mode
+			// Z = Camera Move Up/DownWard At Aim Mode + Crouching Z Axis
+			e ? FMath::Abs(ViewRotation_Delta_Pitch / 45.f * 10.f) : CamCurrLoc.Z
 		)
 	);
+	
+	
+	FVector CurrBoomLoc = CameraBoom->GetRelativeLocation();
+	CameraBoom->SetRelativeLocation(
+		FVector
+		(CurrBoomLoc.X,
+			CurrBoomLoc.Y,
+			(bCrouching ?
+				FMath::Max(CurrBoomLoc.Z - 40.f * DeltaSeconds * 2.f, 20.f) :
+				FMath::Min(CurrBoomLoc.Z + 40.f * DeltaSeconds * 2.f, 70.f)
+				)
+		)
+	);
+	
 
 	if (e)
 	{
@@ -412,12 +413,32 @@ void AFOBCharacter::SetAimingMode_Implementation(bool e, float DeltaSeconds)
 	}
 }
 
+void AFOBCharacter::CrouchCompleted_Implementation()
+{
+	if (C_PlayerState == nullptr) return;
+	C_PlayerState->SetPlayerAnimStatus(PLAYER_CROUCH, false);
+	bCrouching = false;
+	//if (C_AnimInstance == nullptr) return;
+	//C_AnimInstance->ServerSetbCrouching(false);
+	//PlayerAnimStatusUpdated.Execute(false);
+	UE_LOG(LogTemp, Log, TEXT("CrouchCompleted : PLAYER_CROUCH Set %s"), C_PlayerState->GetPlayerAnimStatus(PLAYER_CROUCH) ? TEXT("True") : TEXT("False"));
+}
+
+void AFOBCharacter::CrouchTriggered_Implementation()
+{
+	if (C_PlayerState == nullptr) return;
+	C_PlayerState->SetPlayerAnimStatus(PLAYER_CROUCH, true);
+	bCrouching = true;
+	//if (C_AnimInstance == nullptr) return;
+	//C_AnimInstance->ServerSetbCrouching(true);
+	//PlayerAnimStatusUpdated.Execute(true);
+	UE_LOG(LogTemp, Log, TEXT("CrouchTriggered : PLAYER_CROUCH Set %s"), C_PlayerState->GetPlayerAnimStatus(PLAYER_CROUCH) ? TEXT("True") : TEXT("False"));
+}
+
 void AFOBCharacter::Move(const FInputActionValue& Value)
 {
 	// input is a Vector2D
 	FVector2D MovementVector = Value.Get<FVector2D>();
-
-	//if (MoveVectorUpdated.IsBound()) MoveVectorUpdated.Execute(MovementVector);
 
 	if (Controller != nullptr)
 	{

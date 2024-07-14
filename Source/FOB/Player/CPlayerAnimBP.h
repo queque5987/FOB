@@ -18,10 +18,25 @@ class FOB_API UCPlayerAnimBP : public UAnimInstance
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
+	class ACPlayerState* C_PlayerState;
 public:
+	UFUNCTION(NetMulticast, Reliable)
+	void SetupDelegates();
+
+	UFUNCTION()
+	void SetbCrouching(bool e);
+
+	UFUNCTION(Server, Reliable)
+	void ServerSetbCrouching(bool e);
+
+	UFUNCTION(Client, Reliable)
+	void ClientSetbCrouching(bool e);
 
 	UFUNCTION(BlueprintCallable)
 	void UpdateProperties(float DeltaSeconds);
+
+	//UFUNCTION()
+	//void OnPlayerAnimStatusUpdated(int32 PlayerAnimStatus);
 
 	UPROPERTY(BlueprintReadOnly)
 	class AFOBCharacter* OwningPlayer;
@@ -31,6 +46,9 @@ public:
 
 	UPROPERTY(BlueprintReadOnly)
 	FRotator ViewRotation_Delta;
+
+	UPROPERTY(Replicated, BlueprintReadOnly)
+	bool bCrouching;
 
 	void SetViewRotation_Delta(FRotator NewViewRotation_Delta);
 };
