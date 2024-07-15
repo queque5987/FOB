@@ -26,7 +26,7 @@ protected:
 public:	
 	virtual void Tick(float DeltaTime) override;
 
-	void SetWeapon(AActor* Weapon);
+	void SetWeapon(AActor* Weapon, int32 idx);
 	int32 GetCurrentTimePosAtSpine() { return fSpineIdx; };
 	void SetCurrentTimePosAtSpine(int32 SpineIdx) { fSpineIdx = SpineIdx; };
 	void SetOpacity(float OpacityDelta);

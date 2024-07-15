@@ -18,11 +18,11 @@ void UCWeaponFloatingUI::NativeOnListItemObjectSet(UObject* ListItemObject)
 	WeaponName->SetText(I_Weapon->GetWeaponName());
 }
 
-void UCWeaponFloatingUI::SetWeaponUI(AActor* Weapon)
+void UCWeaponFloatingUI::SetWeaponUI(AActor* Weapon, int32 idx)
 {
 	IWeapon* I_Weapon = Cast<IWeapon>(Weapon);
 	if (I_Weapon == nullptr) return;
 	//WeaponPtr = ListItemObject;
 	
-	WeaponName->SetText(I_Weapon->GetWeaponName());
+	WeaponName->SetText(FText::FromString(TEXT("[") + FString::FromInt(idx) + TEXT("] ") + I_Weapon->GetWeaponName().ToString()));
 }

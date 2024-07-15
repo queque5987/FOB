@@ -22,5 +22,5 @@ class FOB_API UCWeaponFloatingUI : public UUserWidget, public IUserObjectListEnt
 	UObject* WeaponPtr;
 	
 public:
-	void SetWeaponUI(AActor* Weapon);
+	void SetWeaponUI(AActor* Weapon, int32 idx);
 };

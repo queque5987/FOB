@@ -21,6 +21,7 @@ UCPlayerWidgetComponent::UCPlayerWidgetComponent()
 	SplineComponent->SetTangentAtSplinePoint(1, FVector(0.f, 100.f, 0.f), ESplineCoordinateSpace::Local);
 	SplineComponent->SetTangentAtSplinePoint(2, FVector(50.f, 0.f, 0.f), ESplineCoordinateSpace::Local);
 
+	SplineComponent->SetRelativeLocation(FVector(-30.f, 0.f, 0.f));
 	SplineComponent->SetRelativeRotation(FRotator(-20.f, 0.f, 0.f));
 }
 
@@ -34,25 +35,30 @@ void UCPlayerWidgetComponent::TickComponent(float DeltaTime, ELevelTick TickType
 		FVector LocationAtTime = SplineComponent->GetLocationAtTime(UITimes[i], ESplineCoordinateSpace::World);
 		FloatingUIActorArr[i]->SetActorLocation(LocationAtTime);
 		FloatingUIActorArr[i]->SetActorRotation(GetOwner()->GetActorRotation() + FRotator(0.f, 180.f, 0.f));
-		FloatingUIActorArr[i]->SetOpacity(
-			1.f - FMath::Abs(FMath::Atan(UITimes[i] - 0.5f) * 3.5f)
-		);
-
-		if (UITimes[i] > 0.5f - DeltaTime && UITimes[i] < 0.5f + DeltaTime)
+		float Opacity = 1.f - FMath::Abs(FMath::Atan(UITimes[i] - 0.5f) * 5.f);
+		if (UITimes[i] > 0.45f - DeltaTime && UITimes[i] < 0.55f + DeltaTime)
 		{
 			SelectedWeapon = i;
+			if (SelectedWeapon == FMath::Abs(SelectedUI)) Opacity = 1.f;
 		}
+		FloatingUIActorArr[i]->SetOpacity(Opacity);
 	}
 	
 	if (SelectedWeapon == FMath::Abs(SelectedUI)) return;
+
+	FString out;
 
 	for (int i = 0; i < UITimes.Num(); i++)
 	{
 		UITimes[i] += RotateCounterClockWise ? DeltaTime : -DeltaTime;
 		if (UITimes[i] > 1.f) UITimes[i] -= 1.f;
 		else if (UITimes[i] < 0.f) UITimes[i] += 1.f;
-	}
 
+		out += FString::FromInt(i);
+		out += TEXT(" = ");
+		out += FString::SanitizeFloat(UITimes[i]);
+	}
+	UE_LOG(LogTemp, Log, TEXT("UCPlayerWidgetComponent Tick : %s"), *out);
 	//UITime1 += RotateCounterClockWise ? DeltaTime : -DeltaTime;
 	//UITime2 += RotateCounterClockWise ? DeltaTime : -DeltaTime;
 	//UITime3 += RotateCounterClockWise ? DeltaTime : -DeltaTime;
@@ -68,13 +74,13 @@ void UCPlayerWidgetComponent::TickComponent(float DeltaTime, ELevelTick TickType
 void UCPlayerWidgetComponent::AddFloatingUI(AActor* NewWeapon)
 {
 	ACFloatingUIActor* A_UI = GetWorld()->SpawnActor<ACFloatingUIActor>(ACFloatingUIActor::StaticClass(), GetComponentLocation(), GetComponentRotation(), FActorSpawnParameters());
-	A_UI->SetWeapon(NewWeapon);
+	A_UI->SetWeapon(NewWeapon, FloatingUIActorArr.Num());
 	A_UI->SetCurrentTimePosAtSpine(FloatingUIActorArr.Num());
 	FloatingUIActorArr.Add(A_UI);
 	UITimes.Add(0.f);
 	for (int i = 0; i < UITimes.Num(); i++)
 	{
-		UITimes[i] = 1.f / (FloatingUIActorArr.Num() + 1.f) * (i + 1);
+		UITimes[i] = 1.f / (FloatingUIActorArr.Num() + 1.f) * (FloatingUIActorArr.Num() - (i + 2));
 	}
 }
 
@@ -84,6 +90,7 @@ void UCPlayerWidgetComponent::AddFloatingUIArr(int32 FloatingUIActorIndex)
 	RotateCounterClockWise = FloatingUIActorIndex < 0 ? false : true;
 	//UE_LOG(LogTemp, Log, TEXT("UCPlayerWidgetComponent : (%d + %d) % %d"), SelectedUI, FloatingUIActorIndex, FloatingUIActorArr.Num());
 	SelectedUI = (SelectedUI + FloatingUIActorIndex) % FloatingUIActorArr.Num();
-	//UE_LOG(LogTemp, Log, TEXT("UCPlayerWidgetComponent : AddFloatingUIArr - %d"), SelectedUI);
+	if (SelectedUI < 0) SelectedUI = FloatingUIActorArr.Num() - 1;
+	UE_LOG(LogTemp, Log, TEXT("UCPlayerWidgetComponent : AddFloatingUIArr - %d"), SelectedUI);
 }
 

@@ -13,7 +13,7 @@ ACFloatingUIActor::ACFloatingUIActor()
 	if (FloatingUIFinder.Succeeded()) FloatingUIClass = FloatingUIFinder.Class;
 
 	FloatingUIComponent->SetWidgetClass(FloatingUIClass);
-	FloatingUIComponent->SetDrawSize(FVector2D(60.f, 24.f));
+	FloatingUIComponent->SetDrawSize(FVector2D(100.f, 24.f));
 
 	FloatingUIComponent->SetRelativeRotation(FRotator(0.f, 180.f, 0.f));
 }
@@ -30,11 +30,11 @@ void ACFloatingUIActor::Tick(float DeltaTime)
 
 }
 
-void ACFloatingUIActor::SetWeapon(AActor* Weapon)
+void ACFloatingUIActor::SetWeapon(AActor* Weapon, int32 idx)
 {
 	UCWeaponFloatingUI* C_WIdget = Cast<UCWeaponFloatingUI>(FloatingUIComponent->GetWidget());
 	if (C_WIdget == nullptr) return;
-	C_WIdget->SetWeaponUI(Weapon);
+	C_WIdget->SetWeaponUI(Weapon, idx);
 }
 
 void ACFloatingUIActor::SetOpacity(float OpacityDelta)

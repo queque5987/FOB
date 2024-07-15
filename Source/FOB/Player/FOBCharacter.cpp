@@ -134,7 +134,8 @@ void AFOBCharacter::Tick(float DeltaSeconds)
 	UpdateHP();
 
 	//TextRenderComponent->SetText(FText::FromString(FString::SanitizeFloat(fHP)));
-	TextRenderComponent->SetText(FText::FromString(ViewRotation_Delta.ToString()));
+	//TextRenderComponent->SetText(FText::FromString(ViewRotation_Delta.ToString()));
+	TextRenderComponent->SetText(FText::FromString("Test"));
 	if (C_PlayerState == nullptr) return;
 
 // Dash Move Speed Set
