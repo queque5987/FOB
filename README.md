@@ -101,7 +101,7 @@ GetMesh()->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::Alway
 
 ## 5. 총기 영점 조정
 
-[어긋나는 스크린샷]
+![aim0ten](https://github.com/user-attachments/assets/e27c2647-439e-4153-82ea-ae7189fa7bc7)
 
 조준점이 향하는 방향과 AimOffset이 (0, 0)일 때 총열이 향하는 방향에 차이를 줄이고자 하였음 -->
 
@@ -113,4 +113,12 @@ CameraComponent로부터 정면으로 LineTrace를 실행하여 충돌하는 액
 
 가중치에 아크탄젠트를 곱하여 차이가 클수록(영점이 더 엇나갈수록) 변화값이 커지도록 연출
 
-[에임 따라가는 gif]
+![Zeroing](https://github.com/user-attachments/assets/9d2cfd18-3cdb-4cd9-9e61-b864246bc5b3)
+
+## 6. 총기 전환 UI
+
+![WeaponSwitchUI0 (1)](https://github.com/user-attachments/assets/926078e1-5b90-4cd0-922c-074eef2342f4)
+
+![WeaponSwitchUI1 (1)](https://github.com/user-attachments/assets/ab2ed28e-f1ad-4a7e-83c6-ecc278570cb7)
+
+//TODO//
