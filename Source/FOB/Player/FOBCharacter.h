@@ -27,7 +27,10 @@ class AFOBCharacter : public ACharacter, public IPlayerCharacter
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	UCameraComponent* FollowCamera;
-	
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
+	class UCPlayerWidgetComponent* FloatingWidgetsComponent;
+
 	class UCPlayerAnimBP* C_AnimInstance;
 
 // Input Settings
@@ -51,6 +54,8 @@ private:
 	UInputAction* RMBAction;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* CrouchAction;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* ScrollAction;
 
 	float CameraBoomLength_TPS;
 	float CameraBoomLength_FPS;
@@ -80,6 +85,9 @@ private:
 	void CrouchTriggered();
 	UFUNCTION(Server, Unreliable)
 	void CrouchCompleted();
+
+	UFUNCTION(Client, Unreliable)
+	void ScrollTriggered(const FInputActionValue& Value);
 
 	UFUNCTION(Client, Reliable)
 	void SetAimingMode(bool e, float DeltaSeconds);

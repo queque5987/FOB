@@ -10,6 +10,8 @@ public class FOB : ModuleRules
 
 		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "NavigationSystem", "AIModule" });
 
-		PrivateIncludePaths.Add("FOB");
+        PrivateDependencyModuleNames.AddRange(new string[] { "Slate", "SlateCore" });
+
+        PrivateIncludePaths.Add("FOB");
 	}
 }

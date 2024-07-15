@@ -19,6 +19,7 @@
 #include "InputAction.h"
 #include "Weapon/Weapon.h"
 #include "Player/CPlayerAnimBP.h"
+#include "Player/CPlayerWidgetComponent.h"
 //Deprecated
 #include "CBullet.h"
 
@@ -98,6 +99,7 @@ AFOBCharacter::AFOBCharacter()
 	ConstructorHelpers::FObjectFinder<UInputAction> LMBActionFinder(TEXT("/Game/Resources/Character/Input/IA_LMB"));
 	ConstructorHelpers::FObjectFinder<UInputAction> RMBActionFinder(TEXT("/Game/Resources/Character/Input/IA_RMB"));
 	ConstructorHelpers::FObjectFinder<UInputAction> CrouchActionFinder(TEXT("/Game/Resources/Character/Input/IA_Crouch"));
+	ConstructorHelpers::FObjectFinder<UInputAction> ScrollActionFinder(TEXT("/Game/Resources/Character/Input/IA_Scroll"));
 
 	if (InputMapFinder.Succeeded()) DefaultMappingContext = InputMapFinder.Object;
 	if (JumpActionFinder.Succeeded()) JumpAction = JumpActionFinder.Object;
@@ -108,11 +110,15 @@ AFOBCharacter::AFOBCharacter()
 	if (LMBActionFinder.Succeeded()) LMBAction = LMBActionFinder.Object;
 	if (RMBActionFinder.Succeeded()) RMBAction = RMBActionFinder.Object;
 	if (CrouchActionFinder.Succeeded()) CrouchAction = CrouchActionFinder.Object;
+	if (ScrollActionFinder.Succeeded()) ScrollAction = ScrollActionFinder.Object;
 
 	// AnimInstance Load
 
 	ConstructorHelpers::FClassFinder<UAnimInstance> AnimInstFinder(TEXT("/Game/Resources/Character/PlayerAsset/Animation/Blueprint/BP_PlayerAnimBP"));
 	if (AnimInstFinder.Succeeded()) GetMesh()->SetAnimInstanceClass(AnimInstFinder.Class);
+
+	FloatingWidgetsComponent = CreateDefaultSubobject<UCPlayerWidgetComponent>("FloatingWidgetsComponent");
+	FloatingWidgetsComponent->SetupAttachment(GetMesh());
 }
 
 void AFOBCharacter::BeginPlay()
@@ -168,6 +174,9 @@ void AFOBCharacter::PossessedBy(AController* NewController)
 	C_AnimInstance = Cast<UCPlayerAnimBP>(GetMesh()->GetAnimInstance());
 	if (C_AnimInstance == nullptr) return;
 	C_AnimInstance->SetupDelegates();
+	
+	if (FloatingWidgetsComponent == nullptr) return;
+	FloatingWidgetsComponent->AddFloatingUI(nullptr);
 }
 
 void AFOBCharacter::OnRep_MaxWalkSpeed()
@@ -179,6 +188,8 @@ void AFOBCharacter::OnRep_MaxWalkSpeed()
 void AFOBCharacter::OnRep_EquippedWeapon_R()
 {
 	EquippedWeapon_R->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, FName("RightHandSocket"));
+
+	FloatingWidgetsComponent->AddFloatingUI(EquippedWeapon_R);
 }
 
 void AFOBCharacter::OnRep_EquippedWeapon_L()
@@ -305,6 +316,7 @@ void AFOBCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 		EnhancedInputComponent->BindAction(RMBAction, ETriggerEvent::Completed, this, &AFOBCharacter::RMBCompleted);
 		EnhancedInputComponent->BindAction(CrouchAction, ETriggerEvent::Started, this, &AFOBCharacter::CrouchTriggered);
 		EnhancedInputComponent->BindAction(CrouchAction, ETriggerEvent::Completed, this, &AFOBCharacter::CrouchCompleted);
+		EnhancedInputComponent->BindAction(ScrollAction, ETriggerEvent::Triggered, this, &AFOBCharacter::ScrollTriggered);
 	}
 	else
 	{
@@ -433,6 +445,14 @@ void AFOBCharacter::CrouchTriggered_Implementation()
 	//C_AnimInstance->ServerSetbCrouching(true);
 	//PlayerAnimStatusUpdated.Execute(true);
 	UE_LOG(LogTemp, Log, TEXT("CrouchTriggered : PLAYER_CROUCH Set %s"), C_PlayerState->GetPlayerAnimStatus(PLAYER_CROUCH) ? TEXT("True") : TEXT("False"));
+}
+
+void AFOBCharacter::ScrollTriggered_Implementation(const FInputActionValue& Value)
+{
+	float ScrollAxis = Value.Get<float>();
+	if (FloatingWidgetsComponent == nullptr) return;
+	FloatingWidgetsComponent->AddFloatingUIArr(ScrollAxis);
+	UE_LOG(LogTemp, Log, TEXT("AFOBCharacter - ScrollTriggered_Implementation : %f"), ScrollAxis);
 }
 
 void AFOBCharacter::Move(const FInputActionValue& Value)

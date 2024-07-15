@@ -37,5 +37,7 @@ public:
 
 	UFUNCTION(NetMulticast, Reliable)
 	virtual void LMBTriggered() override;
+
+	virtual FText GetWeaponName() override { return FText::FromString(TEXT("XM - 177 GL")); }
 	
 };

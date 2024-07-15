@@ -25,4 +25,7 @@ public:
 	virtual void UnEquip() {}
 	
 	virtual void LMBTriggered() {}
+
+	virtual FText GetWeaponName() { return FText(); }
+	virtual class UTexture2D* GetWeaponIcon() { return nullptr; }
 };
