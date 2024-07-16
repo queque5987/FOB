@@ -106,15 +106,70 @@ GetMesh()->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::Alway
 
 ![aim0ten](https://github.com/user-attachments/assets/e27c2647-439e-4153-82ea-ae7189fa7bc7)
 
-조준점이 향하는 방향과 AimOffset이 (0, 0)일 때 총열이 향하는 방향에 차이를 줄이고자 하였음 -->
+조준점이 향하는 방향과 총열이 향하는 방향의 차이를 줄이고자 하였음
+
+![zeroingExp](https://github.com/user-attachments/assets/590147a9-d4d7-4512-b018-df324a4fe206)
+
+```C++
+	//LineTrace Properties
+	FHitResult HitResult;
+	FVector CameraLocation = (
+		C_PlayerState->GetPlayerAnimStatus(PLAYER_AIMING) ?
+			//Aming
+			CameraBoom->GetComponentLocation() :
+			//NotAiming
+			FollowCamera->GetComponentLocation()
+		) + (
+			bCrouching ? 
+			FVector(0.f, 0.f, -50.f) :
+			FVector(0.f, 0.f, 0.f)
+			);
+	FVector ViewVector = GetViewRotation().Vector();
+	float MaxTargetDistance = 5000.f;
+
+	//Weapon Properties
+	FVector NozzleLocation = I_Weapon->GetFireSocketPos();
+	FVector NozzleVector = EquippedWeapon->GetActorRotation().Vector();
+	FCollisionQueryParams CollisionQueryParam = FCollisionQueryParams();
+	CollisionQueryParam.AddIgnoredActor(this);
+```
+
+```C++
+	bool bHit = GetWorld()->LineTraceSingleByChannel(HitResult, CameraLocation, CameraLocation + ViewVector * MaxTargetDistance, ECC_Pawn, CollisionQueryParam);
+	FVector GoalZeroPoint = bHit ? HitResult.Location : CameraLocation + ViewVector * MaxTargetDistance;
+
+	//DrawDebugSphere(GetWorld(), bHit ? HitResult.Location : CameraLocation + ViewVector * MaxTargetDistance, 20.f, 32.f, bHit ? FColor::Green : FColor::Red);
+	//DrawDebugLine(GetWorld(), CameraLocation, bHit ? HitResult.Location : CameraLocation + ViewVector * MaxTargetDistance, bHit ? FColor::Green : FColor::Red);
+```
+
+```C++
+	FVector ZeroingPoint(NozzleLocation + NozzleVector * MaxTargetDistance);
+	FVector NozzleGoalVector = (GoalZeroPoint - NozzleLocation).GetSafeNormal();
+	FRotator DeltaRot = NozzleGoalVector.Rotation() - NozzleVector.Rotation();
+
+	//DrawDebugSphere(GetWorld(), ZeroingPoint, 20.f, 32.f, FColor::Blue);
+	//DrawDebugLine(GetWorld(), NozzleLocation, ZeroingPoint, FColor::Blue);
+```
 
 CameraComponent로부터 정면으로 LineTrace를 실행하여 충돌하는 액터의 좌표를 감지함(없을 경우 최대 사거리 좌표) -->
 
 위에서 구한 좌표를 GoalZeroPoint라고 했을 때 총열의 방향 벡터와 총열과 GoalZeroPoint 사이의 방향 벡터를 구함 -->
 
-두 방향 벡터 사이의 FRotator를 AimOffset에 적용되는 ViewRotation_Delta에 더하여 해결 -->
+```C++
+	FRotator CurrWeight = ViewRotation_Delta_Zeroing;
 
-가중치에 아크탄젠트를 곱하여 차이가 클수록(영점이 더 엇나갈수록) 변화값이 커지도록 연출
+	CurrWeight.Pitch += (3.f + FMath::Atan(FMath::Abs(DeltaRot.Pitch))) * DeltaRot.Pitch / 1.2f * DeltaSeconds;
+	CurrWeight.Yaw += (10.f + FMath::Atan(FMath::Abs(DeltaRot.Yaw))) * DeltaRot.Yaw / 1.2f * DeltaSeconds;
+	CurrWeight.Pitch = CurrWeight.Pitch > 0 ? FMath::Min(25.f, CurrWeight.Pitch) : FMath::Max(-25.f, CurrWeight.Pitch);
+	CurrWeight.Yaw = CurrWeight.Yaw > 0 ? FMath::Min(25.f, CurrWeight.Yaw) : FMath::Max(-25.f, CurrWeight.Yaw);
+	CurrWeight.Normalize();
+```
+
+두 방향 벡터 사이의 FRotator를 AimOffset에 적용되는 ViewRotation_Delta에 더하여 조준점과 총열의 방향을 서서히 일치시킴 -->
+
+최대 값을 주어 지나치게 큰 변화를 연출하지 않도록 제한함 -->
+
+가중치에 아크탄젠트를 사용하여 차이가 클수록(영점이 더 엇나갈수록) 변화값이 커지도록 연출
 
 ![Zeroing](https://github.com/user-attachments/assets/9d2cfd18-3cdb-4cd9-9e61-b864246bc5b3)
 
