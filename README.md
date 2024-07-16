@@ -117,8 +117,6 @@ CameraComponent로부터 정면으로 LineTrace를 실행하여 충돌하는 액
 
 ## 6. 총기 전환 UI
 
-![WeaponSwitchUI0 (1)](https://github.com/user-attachments/assets/926078e1-5b90-4cd0-922c-074eef2342f4)
-
-![WeaponSwitchUI1 (1)](https://github.com/user-attachments/assets/ab2ed28e-f1ad-4a7e-83c6-ecc278570cb7)
+![WeaponSwitchUI_0717_move](https://github.com/user-attachments/assets/a92a2467-8cc1-432d-a358-102f9682d499)
 
 //TODO//
