@@ -1,3 +1,5 @@
+# 이슈
+
 ## 1. MonsterCharacter의 HP 각 클라이언트에서의 동기화 문제
 
 #### 대미지 전달 시
@@ -98,8 +100,9 @@ Animation은 동기화되고 있었으나, SkeletalMesh의 Bone Transoform이 �
 
 GetMesh()->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones; 단 한 줄 추가하여 해결
 
+# 기능
 
-## 5. 총기 영점 조정
+## 1. 총기 영점 조정
 
 ![aim0ten](https://github.com/user-attachments/assets/e27c2647-439e-4153-82ea-ae7189fa7bc7)
 
@@ -115,7 +118,7 @@ CameraComponent로부터 정면으로 LineTrace를 실행하여 충돌하는 액
 
 ![Zeroing](https://github.com/user-attachments/assets/9d2cfd18-3cdb-4cd9-9e61-b864246bc5b3)
 
-## 6. 총기 전환 UI
+## 2. 총기 전환 UI
 
 ![WeaponSwitchUI_0717_move](https://github.com/user-attachments/assets/a92a2467-8cc1-432d-a358-102f9682d499)
 
