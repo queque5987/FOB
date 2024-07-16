@@ -102,7 +102,7 @@ GetMesh()->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::Alway
 
 # 기능
 
-## 1. 총기 영점 조정
+## 총기 영점 조정
 
 ![aim0ten](https://github.com/user-attachments/assets/e27c2647-439e-4153-82ea-ae7189fa7bc7)
 
@@ -122,4 +122,22 @@ CameraComponent로부터 정면으로 LineTrace를 실행하여 충돌하는 액
 
 ![WeaponSwitchUI_0717_move](https://github.com/user-attachments/assets/a92a2467-8cc1-432d-a358-102f9682d499)
 
-//TODO//
+FloatingUIActor는 WidgetComponent를 통해 간략한 무기 UI를 띄워주는 액터
+
+PlayerWidgetComponent는 Array에 FloatingUIActor를 저장하고, SplineComponent를 통해 액터를 캐릭터 주변에 회전시킴
+
+#### 회전
+
+FloatingUIActor의 Spline에서의 위치는 UITimes(0.f ~ 1.f)에 의해 결정됨
+
+```C++
+1.f / (FloatingUIActorArr.Num() + ((FloatingUIActorArr.Num() % 2 == 0) ? 1.f : 2.f)) * (FloatingUIActorArr.Num() - (i + 2));
+```
+
+각 액터는 1 / FloatingUIActor의 개수 (홀수일 경우 +1)의 간격을 가짐
+
+#### 선택
+
+Player의 Scroll 입력을 받아 PlayerWidgetComponent의 SelectedUI(선택된 액터의 인덱스)를 변경함
+
+PlayerWidgetComponent의 Tick에서 현재 Spline 상 중앙에 위치한(0.45f < UITimes < 0.55f) 액터가 SelectedUI와 일치할 경우 회전을 멈추도록 구현
