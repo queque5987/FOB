@@ -43,3 +43,8 @@ void ACFloatingUIActor::SetOpacity(float OpacityDelta)
 	FloatingUIComponent->SetTintColorAndOpacity(LinearColor);
 }
 
+void ACFloatingUIActor::SetVisibility(bool e)
+{
+	FloatingUIComponent->SetVisibility(e);
+}
+

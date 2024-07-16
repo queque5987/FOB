@@ -19,6 +19,9 @@ class FOB_API UCPlayerAnimBP : public UAnimInstance
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	class ACPlayerState* C_PlayerState;
+
+	UAnimSequence* RiflePullOut;
+	UAnimSequence* RiflePutAway;
 public:
 	UFUNCTION(NetMulticast, Reliable)
 	void SetupDelegates();
@@ -35,9 +38,7 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void UpdateProperties(float DeltaSeconds);
 
-	//UFUNCTION()
-	//void OnPlayerAnimStatusUpdated(int32 PlayerAnimStatus);
-
+//Player Properties
 	UPROPERTY(BlueprintReadOnly)
 	class AFOBCharacter* OwningPlayer;
 
@@ -49,6 +50,22 @@ public:
 
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	bool bCrouching;
+
+	//UPROPERTY(Replicated, BlueprintReadOnly)
+	//bool bLeftHandFull;
+
+	UPROPERTY(Replicated, BlueprintReadOnly)
+	bool bRightHandFull;
+//Player Properties End
+
+//Play Montage
+
+	UFUNCTION()
+	void PlayRiflePullOut();
+
+	UFUNCTION()
+	void PlayRiflePutAway();
+//Play Montage End
 
 	void SetViewRotation_Delta(FRotator NewViewRotation_Delta);
 };

@@ -21,15 +21,26 @@ void UCWeaponComponent::BeginPlay()
 
 void UCWeaponComponent::OnComponentBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
+	if (!GetOwner()->HasAuthority()) return;
 	IPlayerCharacter* I_PlayerCharacter = Cast<IPlayerCharacter>(OtherActor);
 	if (I_PlayerCharacter == nullptr) return;
 	PossessingPlayer = OtherActor;
-	I_PlayerCharacter->ServerEquipItem(GetOwner());
+	I_PlayerCharacter->MulticastRootItem(GetOwner());
 }
 
 void UCWeaponComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+	//if (PossessingPlayer == nullptr)
+	//{
+	//	GetOwner()->SetActorLocation(GetOwner()->GetActorLocation() + FVector(0.f, 0.f, FloatingZ));
+	//	FloatingZ += (MaxFloatingZ > 0 ? DeltaTime : -DeltaTime) * FMath::Min(FMath::Atan(-FloatingZ / MaxFloatingZ) + 1.f, 1.f);
+	//	if ((MaxFloatingZ < 0 && FloatingZ < MaxFloatingZ) || (MaxFloatingZ > 0 && FloatingZ > MaxFloatingZ))
+	//	{
+	//		MaxFloatingZ *= -1;
+	//	}
+	//}
 }
 
 void UCWeaponComponent::Fire_Implementation(FVector FireLocation, UStaticMesh* BulletMesh, float Damage)
@@ -40,6 +51,5 @@ void UCWeaponComponent::Fire_Implementation(FVector FireLocation, UStaticMesh* B
 	FActorSpawnParameters SpawnParam;
 	SpawnParam.Owner = PossessingPlayer;
 	ACBullet* Bullet = GetWorld()->SpawnActor<ACBullet>(ACBullet::StaticClass(), FireLocation, GetOwner()->GetActorRotation(), SpawnParam);
-	Bullet->SetStaticMesh(BulletMesh);
-	//Bullet->SetReplicates(true);
+	if (BulletMesh != nullptr) Bullet->SetStaticMesh(BulletMesh);
 }

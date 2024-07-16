@@ -22,16 +22,21 @@ class FOB_API UCPlayerWidgetComponent : public USceneComponent
 	TArray<class ACFloatingUIActor*> FloatingUIActorArr;
 	TArray<float> UITimes;
 
-	//float UITime1 = 0.f;
-	//float UITime2 = 0.6f;
-	//float UITime3 = 0.3f;
-
 	virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction);
 
 	float RotatePower;
 	int32 SelectedUI = 0;
 	bool RotateCounterClockWise = true;
+	float VisibleCounter = 0.f;
+	const float ResetVisibleCounter = 2.f;
+
+	void SetFloatingActorstVisibility(bool e);
+
 public:
+	void ClearFloatingUI();
 	void AddFloatingUI(AActor* NewWeapon);
 	void AddFloatingUIArr(int32 FloatingUIActorIndex);
+	void SetTemporaryVisible();
+	//Deprecated
+	void RefreshFloatingUI(TArray<AActor*> PossessingWeapons);
 };

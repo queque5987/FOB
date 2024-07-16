@@ -21,7 +21,6 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
-
 	int32 fSpineIdx;
 public:	
 	virtual void Tick(float DeltaTime) override;
@@ -30,4 +29,5 @@ public:
 	int32 GetCurrentTimePosAtSpine() { return fSpineIdx; };
 	void SetCurrentTimePosAtSpine(int32 SpineIdx) { fSpineIdx = SpineIdx; };
 	void SetOpacity(float OpacityDelta);
+	void SetVisibility(bool e);
 };

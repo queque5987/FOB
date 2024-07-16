@@ -13,6 +13,9 @@ class FOB_API UCWeaponComponent : public USceneComponent
 {
 	GENERATED_BODY()
 
+	float FloatingZ = 0.f;
+	float MaxFloatingZ = 50.f;
+
 public:	
 	UCWeaponComponent();
 

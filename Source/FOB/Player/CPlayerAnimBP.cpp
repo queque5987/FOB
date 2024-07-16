@@ -10,6 +10,11 @@
 
 UCPlayerAnimBP::UCPlayerAnimBP() : Super()
 {
+	ConstructorHelpers::FObjectFinder<UAnimSequence> RiflePutAwayFinder(TEXT("/Game/Resources/Character/PlayerAsset/Animation/AnimSeqeunce/Equip/Rifle_Put_Away"));
+	ConstructorHelpers::FObjectFinder<UAnimSequence> RiflePullOutFinder(TEXT("/Game/Resources/Character/PlayerAsset/Animation/AnimSeqeunce/Equip/Rifle_Pull_Out"));
+
+	if (RiflePutAwayFinder.Succeeded()) RiflePutAway = RiflePutAwayFinder.Object;
+	if (RiflePullOutFinder.Succeeded()) RiflePullOut = RiflePullOutFinder.Object;
 }
 
 void UCPlayerAnimBP::NativeInitializeAnimation()
@@ -31,20 +36,10 @@ void UCPlayerAnimBP::SetbCrouching(bool e)
 	bCrouching = e;
 }
 
-//void UCPlayerAnimBP::OnPlayerAnimStatusUpdated(int32 PlayerAnimStatus)
-//{
-//	bCrouching = PLAYER_CROUCH & PlayerAnimStatus;
-//	UE_LOG(LogTemp, Log, TEXT("UCPlayerAnimBP - OnPlayerAnimStatusUpdated %s"), bCrouching ? TEXT("True"): TEXT("False"));
-//}
-
 void UCPlayerAnimBP::SetupDelegates_Implementation()
 {
 	if (OwningPlayer == nullptr) return;
 	OwningPlayer->PlayerAnimStatusUpdated.BindUFunction(this, TEXT("SetbCrouching"));
-
-	//C_PlayerState = Cast<ACPlayerState>(OwningPlayer->GetPlayerState());
-	//if (C_PlayerState == nullptr) return;
-	//C_PlayerState->PlayerAnimStatusUpdated.BindUFunction(this, TEXT("OnPlayerAnimStatusUpdated"));
 
 	UE_LOG(LogTemp, Log, TEXT("UCPlayerAnimBP - SetupDelegates"));
 }
@@ -68,13 +63,10 @@ void UCPlayerAnimBP::UpdateProperties(float DeltaSeconds)
 		OwningPlayer = Cast<AFOBCharacter>(TryGetPawnOwner());
 		return;
 	}
-	//if (C_PlayerState != nullptr)
-	//{
-		//ServerSetbCrouching(C_PlayerState->GetPlayerAnimStatus(PLAYER_CROUCH));
-		//bCrouching = C_PlayerState->GetPlayerAnimStatus(PLAYER_CROUCH);
-		//UE_LOG(LogTemp, Log, TEXT("UCPlayerAnimBP - UpdateProperties %s"), bCrouching ? TEXT("True") : TEXT("False"));
-	//}
+
 	bCrouching = OwningPlayer->GetbCrouching();
+	//bRightHandFull = OwningPlayer->GetEquippedWeapon_R() != nullptr ? true : false;
+	bRightHandFull = OwningPlayer->IsEquippingWeapon();
 	// Movement Param
 	FRotator ViewRotation = OwningPlayer->GetViewRotation();
 	FRotator ViewRotatorYaw = FRotator(0.f, ViewRotation.Yaw, 0.f);
@@ -83,6 +75,16 @@ void UCPlayerAnimBP::UpdateProperties(float DeltaSeconds)
 	MovementVector.Set(RelativeVelocityNormalizedVector.X, RelativeVelocityNormalizedVector.Y);
 
 	ViewRotation_Delta = OwningPlayer->GetViewRotation_Delta();
+}
+
+void UCPlayerAnimBP::PlayRiflePullOut()
+{
+	PlaySlotAnimationAsDynamicMontage(RiflePullOut, "UpperBody", 0.25f, 0.25f, 3.f);
+}
+
+void UCPlayerAnimBP::PlayRiflePutAway()
+{
+	PlaySlotAnimationAsDynamicMontage(RiflePutAway, "UpperBody", 0.25f, 0.25f, 1.f);
 }
 
 void UCPlayerAnimBP::SetViewRotation_Delta(FRotator NewViewRotation_Delta)

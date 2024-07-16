@@ -29,19 +29,38 @@ void UCPlayerWidgetComponent::TickComponent(float DeltaTime, ELevelTick TickType
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
+	if (VisibleCounter <= 0.f) SetFloatingActorstVisibility(false);
+	else VisibleCounter -= DeltaTime;
+	
 	int32 SelectedWeapon = FloatingUIActorArr.Num() * 2;
 	for (int i = 0; i < FloatingUIActorArr.Num(); i++)
 	{
 		FVector LocationAtTime = SplineComponent->GetLocationAtTime(UITimes[i], ESplineCoordinateSpace::World);
 		FloatingUIActorArr[i]->SetActorLocation(LocationAtTime);
 		FloatingUIActorArr[i]->SetActorRotation(GetOwner()->GetActorRotation() + FRotator(0.f, 180.f, 0.f));
-		float Opacity = 1.f - FMath::Abs(FMath::Atan(UITimes[i] - 0.5f) * 5.f);
+		//float Opacity = 1.f - FMath::Abs(FMath::Atan(UITimes[i] - 0.5f) * 1.2f);
+		//float Opacity = FMath::Min((FMath::Atan(VisibleCounter / 3.f) * 1.2f), 1.f);
+		FVector Scale(0.3f, 0.3f, 0.3f);
 		if (UITimes[i] > 0.45f - DeltaTime && UITimes[i] < 0.55f + DeltaTime)
 		{
 			SelectedWeapon = i;
-			if (SelectedWeapon == FMath::Abs(SelectedUI)) Opacity = 1.f;
+			if (SelectedWeapon == FMath::Abs(SelectedUI))
+			{
+				//Opacity = 1.f;
+				Scale *= 1.3f;
+			}
 		}
-		FloatingUIActorArr[i]->SetOpacity(Opacity);
+		//FloatingUIActorArr[i]->SetOpacity(Opacity);
+		FloatingUIActorArr[i]->SetActorRelativeScale3D(Scale * 
+			(1 - FMath::Abs(FMath::Atan(UITimes[i] - 0.5f))) * // Scale Per Location At Spline
+			FMath::Min( // No Minus
+				(
+					FMath::Atan( // Closer VisibleCounter To 0 = Faster Decline 
+						VisibleCounter * 30.f
+					)
+				), 1.f
+			)
+		);
 	}
 	
 	if (SelectedWeapon == FMath::Abs(SelectedUI)) return;
@@ -58,17 +77,21 @@ void UCPlayerWidgetComponent::TickComponent(float DeltaTime, ELevelTick TickType
 		out += TEXT(" = ");
 		out += FString::SanitizeFloat(UITimes[i]);
 	}
-	UE_LOG(LogTemp, Log, TEXT("UCPlayerWidgetComponent Tick : %s"), *out);
-	//UITime1 += RotateCounterClockWise ? DeltaTime : -DeltaTime;
-	//UITime2 += RotateCounterClockWise ? DeltaTime : -DeltaTime;
-	//UITime3 += RotateCounterClockWise ? DeltaTime : -DeltaTime;
+}
 
-	//if (UITime1 > 1.f) UITime1 -= 1.f;
-	//else if (UITime1 < 0.f) UITime1 += 1.f;
-	//if (UITime2 > 1.f) UITime2 -= 1.f;
-	//else if (UITime2 < 0.f) UITime2 += 1.f;
-	//if (UITime3 > 1.f) UITime3 -= 1.f;
-	//else if (UITime3 < 0.f) UITime3 += 1.f;
+void UCPlayerWidgetComponent::SetFloatingActorstVisibility(bool e)
+{
+	for (ACFloatingUIActor* FloatingUIActor : FloatingUIActorArr)
+	{
+		FloatingUIActor->SetVisibility(e);
+	}
+}
+
+void UCPlayerWidgetComponent::ClearFloatingUI()
+{
+	// Clear Existed Arrs
+	FloatingUIActorArr.Empty();
+	UITimes.Empty();
 }
 
 void UCPlayerWidgetComponent::AddFloatingUI(AActor* NewWeapon)
@@ -80,7 +103,7 @@ void UCPlayerWidgetComponent::AddFloatingUI(AActor* NewWeapon)
 	UITimes.Add(0.f);
 	for (int i = 0; i < UITimes.Num(); i++)
 	{
-		UITimes[i] = 1.f / (FloatingUIActorArr.Num() + 1.f) * (FloatingUIActorArr.Num() - (i + 2));
+		UITimes[i] = 1.f / (FloatingUIActorArr.Num() + ((FloatingUIActorArr.Num() % 2 == 0) ? 1.f : 2.f)) * (FloatingUIActorArr.Num() - (i + 2));
 	}
 }
 
@@ -92,5 +115,37 @@ void UCPlayerWidgetComponent::AddFloatingUIArr(int32 FloatingUIActorIndex)
 	SelectedUI = (SelectedUI + FloatingUIActorIndex) % FloatingUIActorArr.Num();
 	if (SelectedUI < 0) SelectedUI = FloatingUIActorArr.Num() - 1;
 	UE_LOG(LogTemp, Log, TEXT("UCPlayerWidgetComponent : AddFloatingUIArr - %d"), SelectedUI);
+}
+
+void UCPlayerWidgetComponent::SetTemporaryVisible()
+{
+	VisibleCounter = ResetVisibleCounter;
+	SetFloatingActorstVisibility(true);
+}
+
+void UCPlayerWidgetComponent::RefreshFloatingUI(TArray<AActor*> PossessingWeapons)
+{
+// Clear Existed Arrs
+	FloatingUIActorArr.Empty();
+	UITimes.Empty();
+	
+// Add UI For Every Weapon
+	for (AActor* WeaponInPocket : PossessingWeapons)
+	{
+		//AddFloatingUI(WeaponInPocket);
+		UE_LOG(LogTemp, Log, TEXT("UCPlayerWidgetComponent : RefreshFloatingUI - %s"), *WeaponInPocket->GetName());
+
+		ACFloatingUIActor* A_UI = GetWorld()->SpawnActor<ACFloatingUIActor>(ACFloatingUIActor::StaticClass(), GetComponentLocation(), GetComponentRotation(), FActorSpawnParameters());
+		A_UI->SetWeapon(WeaponInPocket, FloatingUIActorArr.Num());
+		A_UI->SetCurrentTimePosAtSpine(FloatingUIActorArr.Num());
+		FloatingUIActorArr.Add(A_UI);
+		UITimes.Add(0.f);
+	}
+
+// Arrange UITimes (Location At Spline)
+	for (int i = 0; i < UITimes.Num(); i++)
+	{
+		UITimes[i] = 1.f / (FloatingUIActorArr.Num() + ((FloatingUIActorArr.Num() % 2 == 0) ? 1.f : 2.f)) * (FloatingUIActorArr.Num() - (i + 2));
+	}
 }
 

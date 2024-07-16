@@ -33,6 +33,8 @@ class AFOBCharacter : public ACharacter, public IPlayerCharacter
 
 	class UCPlayerAnimBP* C_AnimInstance;
 
+	class UCPlayerAnimBP* GetC_AnimInstance();
+
 // Input Settings
 // Input Properties
 
@@ -86,7 +88,7 @@ private:
 	UFUNCTION(Server, Unreliable)
 	void CrouchCompleted();
 
-	UFUNCTION(Client, Unreliable)
+	UFUNCTION(NetMulticast, Unreliable)
 	void ScrollTriggered(const FInputActionValue& Value);
 
 	UFUNCTION(Client, Reliable)
@@ -137,23 +139,42 @@ public:
 
 // PlayerCharacter Interface		 //
 // * EquipWeapon Status				//
-public:
-	UPROPERTY(Replicated, ReplicatedUsing = OnRep_EquippedWeapon_R)
-	AActor* EquippedWeapon_R;
-	UPROPERTY(Replicated, ReplicatedUsing = OnRep_EquippedWeapon_L)
-	AActor* EquippedWeapon_L;
+protected:
+	UPROPERTY(Replicated, ReplicatedUsing = OnRep_PossessingWeapons)
+	TArray<AActor*> PossessingWeapons;
+	UPROPERTY(Replicated, ReplicatedUsing = OnRep_EquippingWeaponsIdx)
+	int32 EquippingWeaponsIdx = 1;
 
+	UPROPERTY(Replicated, ReplicatedUsing = OnRep_EquippedWeapon_R, BlueprintReadOnly)
+	AActor* EquippedWeapon_R;
+	UPROPERTY(Replicated, ReplicatedUsing = OnRep_EquippedWeapon_L, BlueprintReadOnly)
+	AActor* EquippedWeapon_L;
+public:
+
+	AActor* GetEquippedWeapon_R() { return EquippedWeapon_R; }
+	AActor* GetEquippedWeapon_L() { return EquippedWeapon_L; }
+
+	UFUNCTION(NetMulticast, Reliable)
+	virtual void MulticastRootItem(class AActor* ItemToAdd) override;
 	UFUNCTION(Server, Reliable)
 	virtual void ServerEquipItem(class AActor* WeaponToEquip) override;
 	UFUNCTION(Server, Reliable)
 	virtual void ServerUnEquipItem() override;
+	UFUNCTION(Server, Reliable)
+	void SwitchEquipItem(int32 NewEquippingWeaponsIdx);
 
+	bool IsEquippingWeapon();
 private:
 	UFUNCTION()
+	void OnRep_EquippingWeaponsIdx();
+	//Deprecated
+	UFUNCTION()
 	void OnRep_EquippedWeapon_R();
+	//Deprecated
 	UFUNCTION()
 	void OnRep_EquippedWeapon_L();
-
+	UFUNCTION()
+	void OnRep_PossessingWeapons();
 // * EquipWeapon Status End			//
 
 // Weapon Aiming

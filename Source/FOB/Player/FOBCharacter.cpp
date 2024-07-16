@@ -158,7 +158,8 @@ void AFOBCharacter::Tick(float DeltaSeconds)
 	SetAimingMode(C_PlayerState->GetPlayerAnimStatus(PLAYER_AIMING), DeltaSeconds);
 
 // Aiming Adjust
-	if (EquippedWeapon_R != nullptr && C_PlayerState->GetPlayerAnimStatus(PLAYER_AIMING))
+	//if (EquippedWeapon_R != nullptr && C_PlayerState->GetPlayerAnimStatus(PLAYER_AIMING))
+	if (IsEquippingWeapon()  && C_PlayerState->GetPlayerAnimStatus(PLAYER_AIMING))
 	{
 		AdjustNozzleToAimSpot(DeltaSeconds);
 	}
@@ -186,11 +187,91 @@ void AFOBCharacter::OnRep_MaxWalkSpeed()
 	GetCharacterMovement()->MaxWalkSpeed = MaxWalkSpeed;
 }
 
+void AFOBCharacter::MulticastRootItem_Implementation(AActor* ItemToAdd)
+{
+	// Weapon
+	if (!UKismetSystemLibrary::DoesImplementInterface(ItemToAdd, UWeapon::StaticClass())) return;
+
+	// Server
+	if (HasAuthority())
+	{
+		PossessingWeapons.Add(ItemToAdd);
+
+		// Equip Immediate When No Weapon
+		if(!IsEquippingWeapon())
+		{
+			UE_LOG(LogTemp, Log, TEXT("AFOBCharacter : ServerRootItem_Implementation On %s\t EquippedWeapon_R == nullptr"), HasAuthority() ? TEXT("Server") : TEXT("Client"));
+			
+			EquippingWeaponsIdx = PossessingWeapons.Num() - 1;
+			OnRep_EquippingWeaponsIdx();
+		}
+		else // Only Add To Inventory
+		{
+			UE_LOG(LogTemp, Log, TEXT("AFOBCharacter : ServerRootItem_Implementation On %s\t EquippedWeapon_R != nullptr"), HasAuthority() ? TEXT("Server") : TEXT("Client"));
+			ItemToAdd->AttachToActor(this, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+			ItemToAdd->SetActorScale3D(FVector(0.f, 0.f, 0.f));
+		}
+	}
+	else // Client
+	{
+		FloatingWidgetsComponent->AddFloatingUI(ItemToAdd);
+	}
+}
+
+void AFOBCharacter::SwitchEquipItem_Implementation(int32 NewEquippingWeaponsIdx)
+{
+	ServerUnEquipItem();
+	EquippingWeaponsIdx = NewEquippingWeaponsIdx;
+	OnRep_EquippingWeaponsIdx();
+}
+
+bool AFOBCharacter::IsEquippingWeapon()
+{
+	return PossessingWeapons.IsValidIndex(EquippingWeaponsIdx);
+}
+
+void AFOBCharacter::OnRep_EquippingWeaponsIdx()
+{
+	UE_LOG(LogTemp, Log, TEXT("AFOBCharacter : OnRep_EquippingWeaponsIdx On %s\t"), HasAuthority() ? TEXT("Server") : TEXT("Client"));
+
+	// Weapon Equip
+	// Attach Weapon To Character
+	if (HasAuthority())
+	{
+		if (PossessingWeapons.IsValidIndex(EquippingWeaponsIdx))
+		{
+			PossessingWeapons[EquippingWeaponsIdx]->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
+			PossessingWeapons[EquippingWeaponsIdx]->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, FName("RightHandSocket"));
+			PossessingWeapons[EquippingWeaponsIdx]->SetActorScale3D(FVector(1.f, 1.f, 1.f));
+		}
+	}
+
+	// Play Draw Rifle Anim
+	UCPlayerAnimBP* temp_AnimInstance = GetC_AnimInstance();
+	if (temp_AnimInstance == nullptr) return;
+	C_AnimInstance->PlayRiflePullOut();
+}
+
 void AFOBCharacter::OnRep_EquippedWeapon_R()
 {
-	EquippedWeapon_R->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, FName("RightHandSocket"));
+	// Weapon UnEquip
+	if (EquippedWeapon_R == nullptr)
+	{
+		return;
+	}
 
-	FloatingWidgetsComponent->AddFloatingUI(EquippedWeapon_R);
+	// Weapon Equip
+	// Attach Weapon To Character
+	if (HasAuthority())
+	{
+		EquippedWeapon_R->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, FName("RightHandSocket"));
+		PossessingWeapons.Add(EquippedWeapon_R);
+	}
+
+	// Play Draw Rifle Anim
+	UCPlayerAnimBP* temp_AnimInstance = GetC_AnimInstance();
+	if (temp_AnimInstance == nullptr) return;
+	C_AnimInstance->PlayRiflePullOut();
 }
 
 void AFOBCharacter::OnRep_EquippedWeapon_L()
@@ -198,14 +279,35 @@ void AFOBCharacter::OnRep_EquippedWeapon_L()
 	EquippedWeapon_L->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, FName("LeftHandSocket"));
 }
 
+void AFOBCharacter::OnRep_PossessingWeapons()
+{
+	//Deprecated
+}
+
 void AFOBCharacter::AdjustNozzleToAimSpot(float DeltaSeconds)
 {
-	IWeapon* I_Weapon = Cast<IWeapon>(EquippedWeapon_R);
-	if (C_PlayerState == nullptr|| I_Weapon == nullptr) return;
+	if (!IsEquippingWeapon())
+	{
+		UE_LOG(LogTemp, Error, TEXT("AFOBCharacter - AdjustNozzleToAimSpot EquippingWeaponsIdx Is Not Valid Index"));
+		return;
+	}
+	AActor* EquippedWeapon = PossessingWeapons[EquippingWeaponsIdx];
+	//IWeapon* I_Weapon = Cast<IWeapon>(EquippedWeapon_R);
+	IWeapon* I_Weapon = Cast<IWeapon>(EquippedWeapon);
+	if (C_PlayerState == nullptr)
+	{
+		UE_LOG(LogTemp, Error, TEXT("AFOBCharacter - AdjustNozzleToAimSpot C_PlayerState == nullptr"));
+		return;
+	}
+	if (I_Weapon == nullptr)
+	{
+		UE_LOG(LogTemp, Error, TEXT("AFOBCharacter - AdjustNozzleToAimSpot I_Weapon == nullptr"));
+		return;
+	}
+
 
 	//LineTrace Properties
 	FHitResult HitResult;
-	//FVector CameraLocation = C_PlayerState->GetPlayerAnimStatus(PLAYER_AIMING) ? CameraBoom->GetComponentLocation() : FollowCamera->GetComponentLocation();
 	FVector CameraLocation = (
 		C_PlayerState->GetPlayerAnimStatus(PLAYER_AIMING) ?
 			//Aming
@@ -219,9 +321,11 @@ void AFOBCharacter::AdjustNozzleToAimSpot(float DeltaSeconds)
 			);
 	FVector ViewVector = GetViewRotation().Vector();
 	float MaxTargetDistance = 5000.f;
+
 	//Weapon Properties
 	FVector NozzleLocation = I_Weapon->GetFireSocketPos();
-	FVector NozzleVector = EquippedWeapon_R->GetActorRotation().Vector();
+	//FVector NozzleVector = EquippedWeapon_R->GetActorRotation().Vector();
+	FVector NozzleVector = EquippedWeapon->GetActorRotation().Vector();
 	FCollisionQueryParams CollisionQueryParam = FCollisionQueryParams();
 	CollisionQueryParam.AddIgnoredActor(this);
 
@@ -254,15 +358,26 @@ void AFOBCharacter::ServerEquipItem_Implementation(AActor* WeaponToEquip)
 	if (!UKismetSystemLibrary::DoesImplementInterface(WeaponToEquip, UWeapon::StaticClass())) return;
 
 	UE_LOG(LogTemp, Log, TEXT("AFOBCharacter : ServerEquipItem %s"), *WeaponToEquip->GetName());
-	EquippedWeapon_R = WeaponToEquip;
-	OnRep_EquippedWeapon_R();
+	//EquippedWeapon_R = WeaponToEquip;
+	//OnRep_EquippedWeapon_R();
 }
 
 void AFOBCharacter::ServerUnEquipItem_Implementation()
 {
 	UE_LOG(LogTemp, Log, TEXT("AFOBCharacter : ServerUnEquipItem"));
 
-	EquippedWeapon_R = nullptr;
+	UCPlayerAnimBP* temp_AnimInstance = GetC_AnimInstance();
+	if (temp_AnimInstance == nullptr)
+	{
+		UE_LOG(LogTemp, Error, TEXT("AFOBCharacter : ServerUnEquipItem - UCPlayerAnimBP Not Found"));
+		return;
+	}
+	C_AnimInstance->PlayRiflePutAway();
+
+	PossessingWeapons[EquippingWeaponsIdx]->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
+	PossessingWeapons[EquippingWeaponsIdx]->AttachToActor(this, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+	PossessingWeapons[EquippingWeaponsIdx]->SetActorScale3D(FVector(0.f, 0.f, 0.f));
+	//EquippedWeapon_R = nullptr;
 }
 
 void AFOBCharacter::UpdateHP_Implementation()
@@ -285,11 +400,13 @@ void AFOBCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLif
 	DOREPLIFETIME(AFOBCharacter, MinWalkSpeed);
 	DOREPLIFETIME(AFOBCharacter, MaxWalkSpeed);
 	DOREPLIFETIME(AFOBCharacter, MaxSprintSpeed);
-	DOREPLIFETIME(AFOBCharacter, EquippedWeapon_R);
-	DOREPLIFETIME(AFOBCharacter, EquippedWeapon_L);
+	//DOREPLIFETIME(AFOBCharacter, EquippedWeapon_R);
+	//DOREPLIFETIME(AFOBCharacter, EquippedWeapon_L);
 	DOREPLIFETIME(AFOBCharacter, ViewRotation_Delta);
 	DOREPLIFETIME(AFOBCharacter, ViewRotation_Delta_Zeroing);
 	DOREPLIFETIME(AFOBCharacter, bCrouching);
+	DOREPLIFETIME(AFOBCharacter, PossessingWeapons);
+	DOREPLIFETIME(AFOBCharacter, EquippingWeaponsIdx);
 }
 
 
@@ -327,13 +444,16 @@ void AFOBCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 
 void AFOBCharacter::LMBTriggered_Implementation()
 {
-	if (EquippedWeapon_R == nullptr)
+	
+	//if (EquippedWeapon_R == nullptr)
+	if (!IsEquippingWeapon())
 	{
 		UE_LOG(LogTemp, Log, TEXT("AFOBCharacter - EquippedWeapon_R Not Found"));
 		return;
 	}
 
-	IWeapon* I_Weapon = Cast<IWeapon>(EquippedWeapon_R);
+	//IWeapon* I_Weapon = Cast<IWeapon>(EquippedWeapon_R);
+	IWeapon* I_Weapon = Cast<IWeapon>(PossessingWeapons[EquippingWeaponsIdx]);
 	if (I_Weapon == nullptr)
 	{
 		UE_LOG(LogTemp, Log, TEXT("AFOBCharacter - EquippedWeapon_R Not Valid Type"));
@@ -341,7 +461,6 @@ void AFOBCharacter::LMBTriggered_Implementation()
 	}
 
 	I_Weapon->LMBTriggered();
-
 }
 
 void AFOBCharacter::RMBStarted_Implementation()
@@ -386,7 +505,6 @@ void AFOBCharacter::SetAimingMode_Implementation(bool e, float DeltaSeconds)
 	if (ViewRotation_Delta_Pitch > 180.f) ViewRotation_Delta_Pitch -= 360.f;
 	CameraBoom->TargetArmLength = FMath::Lerp(CameraBoom->TargetArmLength, e ? CameraBoomLength_FPS : CameraBoomLength_TPS, 0.5f);
 
-	//bCrouching ? -20.f : 0.f
 	FollowCamera->SetRelativeLocation(
 		FVector(
 			// X = Camera Move Forward/Backward At Aim Mode
@@ -414,7 +532,6 @@ void AFOBCharacter::SetAimingMode_Implementation(bool e, float DeltaSeconds)
 		)
 	);
 	
-
 	if (e)
 	{
 		if (CameraBoom->TargetArmLength - CameraBoomLength_FPS > 10.f) return;
@@ -431,9 +548,6 @@ void AFOBCharacter::CrouchCompleted_Implementation()
 	if (C_PlayerState == nullptr) return;
 	C_PlayerState->SetPlayerAnimStatus(PLAYER_CROUCH, false);
 	bCrouching = false;
-	//if (C_AnimInstance == nullptr) return;
-	//C_AnimInstance->ServerSetbCrouching(false);
-	//PlayerAnimStatusUpdated.Execute(false);
 	UE_LOG(LogTemp, Log, TEXT("CrouchCompleted : PLAYER_CROUCH Set %s"), C_PlayerState->GetPlayerAnimStatus(PLAYER_CROUCH) ? TEXT("True") : TEXT("False"));
 }
 
@@ -442,17 +556,33 @@ void AFOBCharacter::CrouchTriggered_Implementation()
 	if (C_PlayerState == nullptr) return;
 	C_PlayerState->SetPlayerAnimStatus(PLAYER_CROUCH, true);
 	bCrouching = true;
-	//if (C_AnimInstance == nullptr) return;
-	//C_AnimInstance->ServerSetbCrouching(true);
-	//PlayerAnimStatusUpdated.Execute(true);
 	UE_LOG(LogTemp, Log, TEXT("CrouchTriggered : PLAYER_CROUCH Set %s"), C_PlayerState->GetPlayerAnimStatus(PLAYER_CROUCH) ? TEXT("True") : TEXT("False"));
 }
 
 void AFOBCharacter::ScrollTriggered_Implementation(const FInputActionValue& Value)
 {
 	float ScrollAxis = Value.Get<float>();
-	if (FloatingWidgetsComponent == nullptr) return;
+	ScrollAxis /= FMath::Abs(ScrollAxis); // [ -1, 0, 1]
+
+	if (FloatingWidgetsComponent == nullptr)
+	{
+		UE_LOG(LogTemp, Error, TEXT("AFOBCharacter - ScrollTriggered_Implementation : FloatingWidgetsComponent Not Found"));
+		return;
+	}
+
+	int32 CurrEquippingWeaponsIdx = EquippingWeaponsIdx;
+	CurrEquippingWeaponsIdx = FMath::FloorToInt(CurrEquippingWeaponsIdx + ScrollAxis) % PossessingWeapons.Num();
+	if (CurrEquippingWeaponsIdx < 0) CurrEquippingWeaponsIdx = PossessingWeapons.Num() - 1;
+	SwitchEquipItem(CurrEquippingWeaponsIdx);
+
+
 	FloatingWidgetsComponent->AddFloatingUIArr(ScrollAxis);
+	FloatingWidgetsComponent->SetTemporaryVisible();
+
+	UCPlayerAnimBP* temp_AnimInstance = GetC_AnimInstance();
+	if (temp_AnimInstance == nullptr) return;
+	C_AnimInstance->PlayRiflePullOut();
+
 	UE_LOG(LogTemp, Log, TEXT("AFOBCharacter - ScrollTriggered_Implementation : %f"), ScrollAxis);
 }
 
@@ -521,8 +651,6 @@ void AFOBCharacter::ClientSendViewRotation_Delta_Implementation()
 
 void AFOBCharacter::ServerSetViewRotation_Delta_Implementation(FRotator NewViewRotation_Delta)
 {
-	//FRotator ViewRotation_Delta_Weight = FRotator(10.f, 0.f, 0.f);
-	//ViewRotation_Delta = (NewViewRotation_Delta + ViewRotation_Delta_Zeroing).GetNormalized();
 	ViewRotation_Delta = NewViewRotation_Delta;
 	OnRep_ViewRotation_Delta();
 }
@@ -535,4 +663,14 @@ float AFOBCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEv
 	UE_LOG(LogTemp, Log, TEXT("AFOBCharacter - Took Damage %f From %s"), DamageAmount, *DamageCauser->GetName());
 
 	return Damaged;
+}
+
+UCPlayerAnimBP* AFOBCharacter::GetC_AnimInstance()
+{
+	if (C_AnimInstance != nullptr) return C_AnimInstance;
+
+	if (GetMesh() == nullptr || GetMesh()->GetAnimInstance() == nullptr) return nullptr;
+
+	C_AnimInstance = Cast<UCPlayerAnimBP>(GetMesh()->GetAnimInstance());
+	return C_AnimInstance;
 }
