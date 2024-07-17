@@ -196,3 +196,12 @@ FloatingUIActor의 Spline에서의 위치는 UITimes(0.f ~ 1.f)에 의해 결정
 Player의 Scroll 입력을 받아 PlayerWidgetComponent의 SelectedUI(선택된 액터의 인덱스)를 변경함
 
 PlayerWidgetComponent의 Tick에서 현재 Spline 상 중앙에 위치한(0.45f < UITimes < 0.55f) 액터가 SelectedUI와 일치할 경우 회전을 멈추도록 구현
+
+
+## 3. 수류탄 투척 궤적
+
+![ThrowingGrenade](https://github.com/user-attachments/assets/8bf8d661-e980-4d1d-970b-68d02ace98c6)
+
+//TODO//
+
+유탄발사기 적용
