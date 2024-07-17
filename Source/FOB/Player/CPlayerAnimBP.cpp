@@ -13,8 +13,12 @@ UCPlayerAnimBP::UCPlayerAnimBP() : Super()
 	ConstructorHelpers::FObjectFinder<UAnimSequence> RiflePutAwayFinder(TEXT("/Game/Resources/Character/PlayerAsset/Animation/AnimSeqeunce/Equip/Rifle_Put_Away"));
 	ConstructorHelpers::FObjectFinder<UAnimSequence> RiflePullOutFinder(TEXT("/Game/Resources/Character/PlayerAsset/Animation/AnimSeqeunce/Equip/Rifle_Pull_Out"));
 
+	ConstructorHelpers::FObjectFinder<UAnimSequence> GrenadeThrowInitFinder(TEXT("/Game/Resources/Character/PlayerAsset/Animation/AnimSeqeunce/Equip/Rifle_Pull_Out"));
+
 	if (RiflePutAwayFinder.Succeeded()) RiflePutAway = RiflePutAwayFinder.Object;
 	if (RiflePullOutFinder.Succeeded()) RiflePullOut = RiflePullOutFinder.Object;
+
+	if (GrenadeThrowInitFinder.Succeeded()) GrenadeThrowInit = GrenadeThrowInitFinder.Object;
 }
 
 void UCPlayerAnimBP::NativeInitializeAnimation()
@@ -65,8 +69,9 @@ void UCPlayerAnimBP::UpdateProperties(float DeltaSeconds)
 	}
 
 	bCrouching = OwningPlayer->GetbCrouching();
-	//bRightHandFull = OwningPlayer->GetEquippedWeapon_R() != nullptr ? true : false;
+	GrenadeAimingDistancePercent = OwningPlayer->GetGrenadeAimingDistancePercent();
 	bRightHandFull = OwningPlayer->IsEquippingWeapon();
+	GrenadeThrowingStep = OwningPlayer->GetGrenadeThrowStep();
 	// Movement Param
 	FRotator ViewRotation = OwningPlayer->GetViewRotation();
 	FRotator ViewRotatorYaw = FRotator(0.f, ViewRotation.Yaw, 0.f);
@@ -85,6 +90,11 @@ void UCPlayerAnimBP::PlayRiflePullOut()
 void UCPlayerAnimBP::PlayRiflePutAway()
 {
 	PlaySlotAnimationAsDynamicMontage(RiflePutAway, "UpperBody", 0.25f, 0.25f, 1.f);
+}
+
+void UCPlayerAnimBP::PlayGrenadeThrowInit()
+{
+	PlaySlotAnimationAsDynamicMontage(GrenadeThrowInit, "UpperBody", 0.25f, 0.25f, 1.f);
 }
 
 void UCPlayerAnimBP::SetViewRotation_Delta(FRotator NewViewRotation_Delta)

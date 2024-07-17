@@ -1,4 +1,13 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
+/*
+	AnimBP :
+		Character->GetbCrouching
+		Character->IsEquippingWeapon
+		Character->GetGrenadeAimingDistancePercent
+
+*/
+
+
 
 #pragma once
 
@@ -58,6 +67,8 @@ private:
 	UInputAction* CrouchAction;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* ScrollAction;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* GranadeAction;
 
 	float CameraBoomLength_TPS;
 	float CameraBoomLength_FPS;
@@ -90,6 +101,13 @@ private:
 
 	UFUNCTION(NetMulticast, Unreliable)
 	void ScrollTriggered(const FInputActionValue& Value);
+
+	UFUNCTION(NetMulticast, Reliable)
+	void GrenadeStarted();
+	UFUNCTION(NetMulticast, Reliable)
+	void GrenadeOnGoing();
+	UFUNCTION(NetMulticast, Reliable)
+	void GrenadeCompleted();
 
 	UFUNCTION(Client, Reliable)
 	void SetAimingMode(bool e, float DeltaSeconds);
@@ -149,8 +167,27 @@ protected:
 	AActor* EquippedWeapon_R;
 	UPROPERTY(Replicated, ReplicatedUsing = OnRep_EquippedWeapon_L, BlueprintReadOnly)
 	AActor* EquippedWeapon_L;
-public:
 
+
+// Grenade Properties		//
+protected:
+	UPROPERTY(EditAnywhere)
+	TArray<class USplineMeshComponent*> SplinePoints;
+	UPROPERTY(EditAnywhere)
+	class UStaticMesh* SplineMesh;
+	UPROPERTY(Replicated)
+	float GrenadeAimingDistancePercent;
+	UPROPERTY(Replicated)
+	int32 GrenadeThrowStep = 0;
+public:
+	float GetGrenadeAimingDistancePercent() { return GrenadeAimingDistancePercent; }
+	float GetGrenadeThrowStep() { return GrenadeThrowStep; }
+
+	UFUNCTION()
+	void OnThrowGrenadeMontageEnded(class UAnimMontage* Montage, bool bInterrupted);
+// Grenade Properties end	//
+
+public:
 	AActor* GetEquippedWeapon_R() { return EquippedWeapon_R; }
 	AActor* GetEquippedWeapon_L() { return EquippedWeapon_L; }
 
@@ -186,7 +223,7 @@ private:
 private:
 	class ACPlayerState* C_PlayerState;
 
-	UPROPERTY(Replicated, Transient, ReplicatedUsing = OnRep_MaxWalkSpeed)
+	UPROPERTY(Replicated, Transient)
 	float MinWalkSpeed;
 	UPROPERTY(Replicated, Transient, ReplicatedUsing = OnRep_MaxWalkSpeed)
 	float MaxWalkSpeed;

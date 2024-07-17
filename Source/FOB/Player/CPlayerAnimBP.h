@@ -22,6 +22,8 @@ class FOB_API UCPlayerAnimBP : public UAnimInstance
 
 	UAnimSequence* RiflePullOut;
 	UAnimSequence* RiflePutAway;
+
+	UAnimSequence* GrenadeThrowInit;
 public:
 	UFUNCTION(NetMulticast, Reliable)
 	void SetupDelegates();
@@ -51,6 +53,11 @@ public:
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	bool bCrouching;
 
+	UPROPERTY(Replicated, BlueprintReadOnly)
+	float GrenadeAimingDistancePercent;
+
+	UPROPERTY(Replicated, BlueprintReadOnly)
+	int GrenadeThrowingStep;
 	//UPROPERTY(Replicated, BlueprintReadOnly)
 	//bool bLeftHandFull;
 
@@ -65,6 +72,10 @@ public:
 
 	UFUNCTION()
 	void PlayRiflePutAway();
+
+	UFUNCTION()
+	void PlayGrenadeThrowInit();
+
 //Play Montage End
 
 	void SetViewRotation_Delta(FRotator NewViewRotation_Delta);

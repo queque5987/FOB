@@ -20,6 +20,8 @@
 #include "Weapon/Weapon.h"
 #include "Player/CPlayerAnimBP.h"
 #include "Player/CPlayerWidgetComponent.h"
+#include "Weapon/CGrenadeAim.h"
+#include "Components/SplineMeshComponent.h"
 //Deprecated
 #include "CBullet.h"
 
@@ -100,6 +102,7 @@ AFOBCharacter::AFOBCharacter()
 	ConstructorHelpers::FObjectFinder<UInputAction> RMBActionFinder(TEXT("/Game/Resources/Character/Input/IA_RMB"));
 	ConstructorHelpers::FObjectFinder<UInputAction> CrouchActionFinder(TEXT("/Game/Resources/Character/Input/IA_Crouch"));
 	ConstructorHelpers::FObjectFinder<UInputAction> ScrollActionFinder(TEXT("/Game/Resources/Character/Input/IA_Scroll"));
+	ConstructorHelpers::FObjectFinder<UInputAction> GrenadeActionFinder(TEXT("/Game/Resources/Character/Input/IA_Q"));
 
 	if (InputMapFinder.Succeeded()) DefaultMappingContext = InputMapFinder.Object;
 	if (JumpActionFinder.Succeeded()) JumpAction = JumpActionFinder.Object;
@@ -111,6 +114,7 @@ AFOBCharacter::AFOBCharacter()
 	if (RMBActionFinder.Succeeded()) RMBAction = RMBActionFinder.Object;
 	if (CrouchActionFinder.Succeeded()) CrouchAction = CrouchActionFinder.Object;
 	if (ScrollActionFinder.Succeeded()) ScrollAction = ScrollActionFinder.Object;
+	if (GrenadeActionFinder.Succeeded()) GranadeAction = GrenadeActionFinder.Object;
 
 	// AnimInstance Load
 
@@ -119,6 +123,9 @@ AFOBCharacter::AFOBCharacter()
 
 	FloatingWidgetsComponent = CreateDefaultSubobject<UCPlayerWidgetComponent>("FloatingWidgetsComponent");
 	FloatingWidgetsComponent->SetupAttachment(GetMesh());
+
+	ConstructorHelpers::FObjectFinder<UStaticMesh> SMFinder(TEXT("/Game/ThirdPerson/Maps/_GENERATED/quequ/Sphere_2750B2E7"));
+	if (SMFinder.Succeeded()) SplineMesh = SMFinder.Object;
 }
 
 void AFOBCharacter::BeginPlay()
@@ -135,7 +142,8 @@ void AFOBCharacter::Tick(float DeltaSeconds)
 
 	//TextRenderComponent->SetText(FText::FromString(FString::SanitizeFloat(fHP)));
 	//TextRenderComponent->SetText(FText::FromString(ViewRotation_Delta.ToString()));
-	TextRenderComponent->SetText(FText::FromString("Test"));
+	
+	TextRenderComponent->SetText(FText::FromString(FString::SanitizeFloat(MaxWalkSpeed)));
 	if (C_PlayerState == nullptr) return;
 
 // Dash Move Speed Set
@@ -223,6 +231,13 @@ void AFOBCharacter::SwitchEquipItem_Implementation(int32 NewEquippingWeaponsIdx)
 	ServerUnEquipItem();
 	EquippingWeaponsIdx = NewEquippingWeaponsIdx;
 	OnRep_EquippingWeaponsIdx();
+}
+
+void AFOBCharacter::OnThrowGrenadeMontageEnded(UAnimMontage* Montage, bool bInterrupted)
+{
+	UE_LOG(LogTemp, Log, TEXT("AFOBCharacter : OnThrowGrenadeMontageEnded"));
+	GrenadeThrowStep = 0;
+	//C_AnimInstance->OnMontageEnded.RemoveDynamic(this, &AFOBCharacter::OnThrowGrenadeMontageEnded);
 }
 
 bool AFOBCharacter::IsEquippingWeapon()
@@ -324,7 +339,6 @@ void AFOBCharacter::AdjustNozzleToAimSpot(float DeltaSeconds)
 
 	//Weapon Properties
 	FVector NozzleLocation = I_Weapon->GetFireSocketPos();
-	//FVector NozzleVector = EquippedWeapon_R->GetActorRotation().Vector();
 	FVector NozzleVector = EquippedWeapon->GetActorRotation().Vector();
 	FCollisionQueryParams CollisionQueryParam = FCollisionQueryParams();
 	CollisionQueryParam.AddIgnoredActor(this);
@@ -400,13 +414,13 @@ void AFOBCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLif
 	DOREPLIFETIME(AFOBCharacter, MinWalkSpeed);
 	DOREPLIFETIME(AFOBCharacter, MaxWalkSpeed);
 	DOREPLIFETIME(AFOBCharacter, MaxSprintSpeed);
-	//DOREPLIFETIME(AFOBCharacter, EquippedWeapon_R);
-	//DOREPLIFETIME(AFOBCharacter, EquippedWeapon_L);
 	DOREPLIFETIME(AFOBCharacter, ViewRotation_Delta);
 	DOREPLIFETIME(AFOBCharacter, ViewRotation_Delta_Zeroing);
 	DOREPLIFETIME(AFOBCharacter, bCrouching);
 	DOREPLIFETIME(AFOBCharacter, PossessingWeapons);
 	DOREPLIFETIME(AFOBCharacter, EquippingWeaponsIdx);
+	DOREPLIFETIME(AFOBCharacter, GrenadeAimingDistancePercent);
+	DOREPLIFETIME(AFOBCharacter, GrenadeThrowStep);
 }
 
 
@@ -435,6 +449,9 @@ void AFOBCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 		EnhancedInputComponent->BindAction(CrouchAction, ETriggerEvent::Started, this, &AFOBCharacter::CrouchTriggered);
 		EnhancedInputComponent->BindAction(CrouchAction, ETriggerEvent::Completed, this, &AFOBCharacter::CrouchCompleted);
 		EnhancedInputComponent->BindAction(ScrollAction, ETriggerEvent::Triggered, this, &AFOBCharacter::ScrollTriggered);
+		EnhancedInputComponent->BindAction(GranadeAction, ETriggerEvent::Started, this, &AFOBCharacter::GrenadeStarted);
+		EnhancedInputComponent->BindAction(GranadeAction, ETriggerEvent::Ongoing, this, &AFOBCharacter::GrenadeOnGoing);
+		EnhancedInputComponent->BindAction(GranadeAction, ETriggerEvent::Completed, this, &AFOBCharacter::GrenadeCompleted);
 	}
 	else
 	{
@@ -486,7 +503,7 @@ void AFOBCharacter::ShiftTriggered_Implementation()
 	if (C_PlayerState->GetPlayerAnimStatus(PLAYER_AIMING)) return;
 
 	C_PlayerState->SetPlayerAnimStatus(PLAYER_DASHING, true);
-	UE_LOG(LogTemp, Log, TEXT("ShiftOnGoing : PLAYER_DASHING Set %s"), C_PlayerState->GetPlayerAnimStatus(PLAYER_DASHING) ? TEXT("True") : TEXT("False"));
+	//UE_LOG(LogTemp, Log, TEXT("ShiftOnGoing : PLAYER_DASHING Set %s"), C_PlayerState->GetPlayerAnimStatus(PLAYER_DASHING) ? TEXT("True") : TEXT("False"));
 }
 
 void AFOBCharacter::ShiftCompleted_Implementation()
@@ -495,7 +512,7 @@ void AFOBCharacter::ShiftCompleted_Implementation()
 	if (C_PlayerState->GetPlayerAnimStatus(PLAYER_AIMING)) return;
 
 	C_PlayerState->SetPlayerAnimStatus(PLAYER_DASHING, false);
-	UE_LOG(LogTemp, Log, TEXT("ShiftCompleted : PLAYER_DASHING Set %s"), C_PlayerState->GetPlayerAnimStatus(PLAYER_DASHING) ? TEXT("True") : TEXT("False"));
+	//UE_LOG(LogTemp, Log, TEXT("ShiftCompleted : PLAYER_DASHING Set %s"), C_PlayerState->GetPlayerAnimStatus(PLAYER_DASHING) ? TEXT("True") : TEXT("False"));
 }
 
 void AFOBCharacter::SetAimingMode_Implementation(bool e, float DeltaSeconds)
@@ -584,6 +601,91 @@ void AFOBCharacter::ScrollTriggered_Implementation(const FInputActionValue& Valu
 	C_AnimInstance->PlayRiflePullOut();
 
 	UE_LOG(LogTemp, Log, TEXT("AFOBCharacter - ScrollTriggered_Implementation : %f"), ScrollAxis);
+}
+
+void AFOBCharacter::GrenadeStarted_Implementation()
+{
+	//UCPlayerAnimBP* temp_AnimInstance = GetC_AnimInstance();
+	//if (temp_AnimInstance == nullptr) return;
+	GrenadeThrowStep = 1;
+	//C_AnimInstance->PlayGrenadeThrowInit(); Deprecated : Use BP
+	UE_LOG(LogTemp, Log, TEXT("AFOBCharacter - GrenadeStarted : %s"), HasAuthority() ? TEXT("Server") : TEXT("Client"));	
+}
+
+void AFOBCharacter::GrenadeOnGoing_Implementation()
+{
+	for (USplineMeshComponent* SplinePoint : SplinePoints)
+	{
+		SplinePoint->DestroyComponent();
+	}
+	SplinePoints.Empty();
+
+	FHitResult HitResult;
+	TArray<FVector> OutPositions;
+	FVector Destination;
+	TArray<AActor*> IgnoreActor = { this };
+
+	FRotator AimRotator = GetViewRotation();
+	AimRotator.Pitch = AimRotator.Pitch > 180.f ? AimRotator.Pitch - 360.f : AimRotator.Pitch;
+	GrenadeAimingDistancePercent = (AimRotator.Pitch + 45.f) / 90.f;
+	float GrenadeVelocityAcc = 1500.f * GrenadeAimingDistancePercent;
+
+	FVector AimVector = AimRotator.Vector();
+
+	FRotator GrenadeRotator = GetActorRotation();
+	GrenadeRotator.Pitch = 30.f;
+	UGameplayStatics::Blueprint_PredictProjectilePath_ByTraceChannel(this, HitResult, OutPositions, Destination, GetMesh()->GetSocketLocation("RightHandSocket"), GrenadeRotator.Vector() * GrenadeVelocityAcc, true, 30.f, ECC_Pawn, true, IgnoreActor, EDrawDebugTrace::None, 0.f);
+
+	FVector StartLocation;
+	FVector StartTangent;
+	FVector EndLocation;
+	FVector EndTangent;
+
+	for (int i = 0; i < OutPositions.Num(); i++)
+	{
+		StartLocation = OutPositions[i];
+		StartTangent = i+1 < OutPositions.Num() ? OutPositions[i + 1] - OutPositions[i] : FVector::ZeroVector;
+		EndLocation = i+1 < OutPositions.Num() ? OutPositions[i + 1]: StartLocation;
+		EndTangent = i+2 < OutPositions.Num() ? OutPositions[i + 2] - OutPositions[i + 1] : FVector::ZeroVector;
+
+		USplineMeshComponent* NewSplinePoint = NewObject<USplineMeshComponent>(this, USplineMeshComponent::StaticClass());
+		NewSplinePoint->SetStartAndEnd(StartLocation, StartTangent, EndLocation, EndTangent);
+		NewSplinePoint->SetStaticMesh(SplineMesh);
+		NewSplinePoint->RegisterComponent();
+		NewSplinePoint->ForwardAxis = ESplineMeshAxis::Z;
+		NewSplinePoint->SetBoundaryMin(-FVector::Dist(StartLocation, EndLocation));
+		NewSplinePoint->SetBoundaryMax(FVector::Dist(StartLocation, EndLocation));
+		SplinePoints.Add(NewSplinePoint);
+
+		//DrawDebugDirectionalArrow(GetWorld(), StartLocation, EndLocation, 40.f, FColor::Blue);
+	}
+
+	//UE_LOG(LogTemp, Log, TEXT("AFOBCharacter - GrenadeOnGoing : %s"), HasAuthority() ? TEXT("Server") : TEXT("Client"));
+}
+
+void AFOBCharacter::GrenadeCompleted_Implementation()
+{
+	GrenadeThrowStep = 2;
+
+	UE_LOG(LogTemp, Log, TEXT("AFOBCharacter - GrenadeCompleted : %s"), HasAuthority() ? TEXT("Server") : TEXT("Client"));
+	for (USplineMeshComponent* SplinePoint : SplinePoints)
+	{
+		SplinePoint->DestroyComponent();
+	}
+	SplinePoints.Empty();
+
+	UCPlayerAnimBP* temp_AnimInstance = GetC_AnimInstance();
+	if (temp_AnimInstance == nullptr) return;
+	FTimerHandle tempTimerHandle;
+	GetWorld()->GetTimerManager().SetTimer(
+		tempTimerHandle, FTimerDelegate::CreateLambda(
+			[&]
+			{
+				GrenadeThrowStep = 0;
+			}
+		), 1.f, false
+	);
+	//C_AnimInstance->OnMontageEnded.AddDynamic(this, &AFOBCharacter::OnThrowGrenadeMontageEnded);
 }
 
 void AFOBCharacter::Move(const FInputActionValue& Value)
